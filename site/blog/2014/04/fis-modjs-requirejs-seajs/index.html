@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="Mod 与 RequireJS/SeaJS 的那些事_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="Mod 与 RequireJS/SeaJS 的那些事,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>Mod 与 RequireJS/SeaJS 的那些事 FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                <img src="/img/avatar/walter.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">Mod 与 RequireJS/SeaJS 的那些事</h1>
+            <div class="author">walter | 02 Apr 2014</div>
+        </div>
+
+        <div class="content">
+        <p><em>本文的目的是为了能大让家更好的认识 Mod，之所以引入 RequireJS/SeaJS 的对比主要是应大家要求更清晰的对比应用场景，并不是为了比较出孰胜孰劣，RequireJS 和 SeaJS 都是模块化漫漫之路的先驱者，向他们致敬！</em></p>
+
+<h2>为工程化为生的<a href="https://github.com/fex-team/mod">Mod</a></h2>
+
+<blockquote>
+<p>模块化是一种处理复杂系统分解成为更好的可管理模块的方式，它可以把系统代码划分为一系列职责单一，高度解耦且可替换的模块，采用模块化可以让系统的可维护性更加简单易得。</p>
+</blockquote>
+
+<p>JavaScript 并没有为开发者们提供以一种简洁、有条理地的方式来管理模块的方法。从出发点来看，<a href="https://github.com/fex-team/mod">Mod</a>和 RequireJS/SeaJS 是一致的，为开发者提供一套 JavaScript 模块化开发方案，让 JavaScript 的模块化开发变得更简单自然。但是在实现的过程中却存在巨大着的差异。</p>
+
+<p><a href="https://github.com/fex-team/mod">Mod</a>严格上来讲并不是一个独立的模块化框架，它是被设计用做<a href="http://fis.baidu.com">前端工程化</a>模块化方案的 JavaScript 支持，需要和自动化工具、后端框架配合来使用，目的在于希望给工程师提供一个类似 nodeJS 一样的开发体验，同时具备很好的线上性能。</p>
+
+<p>RequireJS 和 SeaJS 的定位主要是 Web 浏览器端的模块加载器，依靠 JavaScript 运行时来支持模块定义、依赖分析和加载等功能。</p>
+
+<h2>类 CommonJS 的开发体验</h2>
+
+<p>RequireJS 遵守的是 AMD 规范，SeaJS 遵守的是 CMD 的规范。AMD/CMD 规范使用的是“异步模块定义”的方式，这种方式给开发带来了极大的不便，所有的同步代码都需要修改为异步的方式，我们是否可以在前端开发中使用“ CommonJS ”的方式，开发者可以使用自然、容易理解的模块定义和调用方式，不需要关注模块是否异步，不需要改变开发者的开发行为。答案当然是肯定的，<a href="https://github.com/fex-team/mod">Mod</a>并不完全遵守 AMD/CMD 规范，也正是为了为开发者提供更简单自然的开发体验。</p>
+
+<h3>模块定义</h3>
+
+<p>Mod 使用 define 来定义一个模块：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="nx">define</span> <span class="p">(</span><span class="nx">id</span><span class="p">,</span> <span class="nx">factory</span><span class="p">)</span>
+</code></pre></div>
+<p>factory 提供了 3 个参数：require, exports, module ，用于模块的引用和导出。</p>
+
+<p><strong>在平常开发中，我们无需关注模块定义，工具会自动对 JS 进行 define 包装处理</strong>:</p>
+
+<p>JS 源码</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="c1">//common/widget/menu/menu.js</span>
+<span class="kd">var</span> <span class="nx">$</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;common:widget/jquery/jquery.js&#39;</span><span class="p">);</span>
+
+<span class="nx">exports</span><span class="p">.</span><span class="nx">init</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.menu-ui ul li a&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">{</span>
+        <span class="kd">var</span> <span class="nx">self</span> <span class="o">=</span> <span class="k">this</span><span class="p">;</span>
+        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.menu-ui ul li a.active&#39;</span><span class="p">).</span><span class="nx">removeClass</span><span class="p">(</span><span class="s1">&#39;active&#39;</span><span class="p">);</span>
+        <span class="nx">$</span><span class="p">(</span><span class="nx">self</span><span class="p">).</span><span class="nx">addClass</span><span class="p">(</span><span class="s1">&#39;active&#39;</span><span class="p">);</span>
+        <span class="nx">event</span><span class="p">.</span><span class="nx">preventDefault</span><span class="p">();</span>
+    <span class="p">});</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>编译后代码</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="nx">define</span><span class="p">(</span><span class="s1">&#39;common:widget/menu/menu.js&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">require</span><span class="p">,</span> <span class="nx">exports</span><span class="p">,</span> <span class="nx">module</span><span class="p">){</span>
+    <span class="kd">var</span> <span class="nx">$</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;common:widget/jquery/jquery.js&#39;</span><span class="p">);</span>
+    <span class="nx">exports</span><span class="p">.</span><span class="nx">init</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.menu-ui ul li a&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kd">var</span> <span class="nx">self</span> <span class="o">=</span> <span class="k">this</span><span class="p">;</span>
+            <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.menu-ui ul li a.active&#39;</span><span class="p">).</span><span class="nx">removeClass</span><span class="p">(</span><span class="s1">&#39;active&#39;</span><span class="p">);</span>
+            <span class="nx">$</span><span class="p">(</span><span class="nx">self</span><span class="p">).</span><span class="nx">addClass</span><span class="p">(</span><span class="s1">&#39;active&#39;</span><span class="p">);</span>
+            <span class="nx">event</span><span class="p">.</span><span class="nx">preventDefault</span><span class="p">();</span>
+        <span class="p">});</span>
+    <span class="p">};</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3>模块调用</h3>
+
+<p><a href="https://github.com/fex-team/mod">Mod</a>会在模块初始化之前自动加载相关依赖。因此当我们需要一个模块时，只需提供一个模块名即可获取：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="nx">require</span> <span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<p>因为所需的模块都已预先加载，因此 require 可以立即(同步)返回该模块引用。<strong>无论在页面的 script 还是模块内部</strong>，工程师都可以放心通过 require 来加载模块，不需要考虑何时该使用同步接口何时调用异步接口。</p>
+
+<h2>避免模块化引来的性能问题</h2>
+
+<p>RequireJS/SeaJS 通过过 JavaScript 运行时来支持“匿名闭包”、“依赖分析”和“模块加载”等功能，“依赖分析”需要在 JavaScript 运行时通过正则匹配到模块的依赖关系，然后顺着依赖链（也就是顺着模块声明的依赖层层进入，直到没有依赖为止）把所有需要加载的模块按顺序一一加载完毕，当模块很多、依赖关系复杂的情况下会严重影响页面性能。<a href="https://github.com/fex-team/mod">Mod</a>通过以下设计避免了如上问题：</p>
+
+<ul>
+<li>通过工具自动添加 define 闭包，线上不需要支持匿名闭包</li>
+<li>通过工具自动处理依赖，线上不需要动态处理依赖</li>
+<li>通过后端模板自动插入 script，线上不需要通过前端框架进行模块加载</li>
+</ul>
+
+<p>通过以上设计，<a href="https://github.com/fex-team/mod">Mod</a>极其精简，整个文件只有 100 多行，相比下 RequireJS 有 2000 多行，SeaJS 有将近 1000 行。</p>
+
+<h2>避免模块化为打包部署带来的极大不便</h2>
+
+<p>通过 RequireJS/SeaJS 进行模块化开发后，合并静态资源(打包)将变得十分不方便和晦涩难懂，每个文件里只能有一个模块，无论是“ combo 插件”还是“ flush 插件”，都需要我们修改模块化调用的代码，这无疑是雪上加霜，工程师不仅需要在开发的时候关注模块定义，在调用的时候还需要关注在一个请求里面加载哪些模块比较合适，模块化的初衷是为了提高开发效率、降低维护成本，但我们发现这样的模块化方案实际上并没有降低维护成本，某种程度上来说使得整个项目更加复杂了。而使用 Mod，工程师只需要在配置文件配置合并策略即可，并不需要关注其他细节，<a href="https://github.com/fex-team/mod">Mod</a>会自动处理好依赖以及合并信息并在模块初始化之前将模块的静态资源以及所依赖的模块加载并准备好。</p>
+
+<h2>自适应的性能优化</h2>
+
+<p>整个<a href="https://github.com/fex-team/mod">Mod</a>模块化流程如下：</p>
+
+<p><img src="/img/fis-modjs-requirejs-seajs/framework.png" alt="framework"></p>
+
+<p>通过自动化工具对模块进行编译处理，包括对对 JavaScript 模块添加闭包、记录每个静态资源的部署路径以及依赖关系并生成资源表(resource map),如下所示，</p>
+<div class="highlight"><pre><code class="json language-json" data-lang="json"><span class="p">{</span>
+        <span class="nt">&quot;res&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;demo.js&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;uri&quot;</span><span class="p">:</span> <span class="s2">&quot;/static/js/demo_33c5143.js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;deps&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;demo.css&quot;</span>
+                <span class="p">],</span>
+                <span class="nt">&quot;pkg&quot;</span><span class="p">:</span> <span class="s2">&quot;p0&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;index.html&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;uri&quot;</span><span class="p">:</span> <span class="s2">&quot;/index.html&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;html&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;deps&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;demo.js&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;demo.css&quot;</span>
+                <span class="p">]</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;script.js&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;uri&quot;</span><span class="p">:</span> <span class="s2">&quot;/static/js/script_32300bf.js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;pkg&quot;</span><span class="p">:</span> <span class="s2">&quot;p0&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;pkg&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;p0&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;uri&quot;</span><span class="p">:</span> <span class="s2">&quot;/static/pkg/aio_5bb04ef.js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+                <span class="nt">&quot;has&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;demo.js&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;script.js&quot;</span>
+                <span class="p">],</span>
+                <span class="nt">&quot;deps&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="s2">&quot;demo.css&quot;</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+</code></pre></div>
+<p>所有被打包的资源会有一个 pkg 属性 指向该表中的资源，而这个资源，正是我们配置的打包策略。有了这些信息，我们可以通过 Mod 框架(Mod 和后端框架)来管理和控制模块的加载。<a href="https://github.com/fex-team/mod">Mod</a>的模块化可以十分灵活的适应各种性能优化场景，我们还可以通过监控模块的调用情况，自动生成最优的打包配置，让网站可以自适应优化。</p>
+
+<h2>总结</h2>
+
+<p><a href="https://github.com/fex-team/mod">Mod</a>提供的是一体化的模块化解决方案，更多的是从工程化、自动化的角度去考虑，RequireJS/SeaJS 更独立灵活。</p>
+
+<h2>相关阅读</h2>
+
+<ul>
+<li><a href="https://github.com/fex-team/fis-plus/blob/master/doc/widget.md">How to Develop With Widgets</a></li>
+<li><a href="https://github.com/fex-team/fis-plus/blob/master/doc/pack-configuration.md">Concat Files And Manage Dependencies Automatically</a></li>
+<li><a href="https://github.com/fex-team/fis-plus/blob/master/doc/compilation%20plugin.md">A Toolset For Production</a></li>
+</ul>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                作者：<a href="http://weibo.com/u/1916384703" target="_blank">walter (http://weibo.com/u/1916384703)</a> - F.I.S <br/>
+                <a href="http://weibo.com/u/1916384703" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#walter">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="Mod 与 RequireJS/SeaJS 的那些事"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/04/fis-modjs-requirejs-seajs";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+

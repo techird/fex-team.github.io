@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="2D 绘图技术中的坐标系统与坐标变换_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="2D 绘图技术中的坐标系统与坐标变换,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>2D 绘图技术中的坐标系统与坐标变换 FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                <img src="/img/avatar/techird.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">2D 绘图技术中的坐标系统与坐标变换</h1>
+            <div class="author">techird | 22 Apr 2014</div>
+        </div>
+
+        <div class="content">
+        <p>本文介绍在 2D 绘图技术中的坐标系统和坐标变换的相关知识。同时介绍 Kity 在这方面提供的 API 。希望这些知识对于需要进行图形应用开发的同学会有所帮助。</p>
+
+<h2>概述</h2>
+
+<p>坐标系统帮助我们在一个空间中定位物件和描述物件的几何属性。坐标系统有其维度属性，描述三维空间的物件我们需要三维的坐标系统，本文针对的是 2D 绘图技术中的坐标系统，故文章后面坐标系统均指二维坐标系统。</p>
+
+<p>在平面当中，最常见的坐标系统是<a href="http://zh.wikipedia.org/wiki/%E7%AC%9B%E5%8D%A1%E5%84%BF%E5%9D%90%E6%A0%87%E7%B3%BB">笛卡尔坐标系</a>和<a href="http://zh.wikipedia.org/wiki/%E6%9E%81%E5%9D%90%E6%A0%87%E7%B3%BB">极坐标系</a>。<a href="http://zh.wikipedia.org/wiki/%E7%AC%9B%E5%8D%A1%E5%84%BF%E5%9D%90%E6%A0%87%E7%B3%BB">笛卡尔坐标系</a>就是我们熟知的平面直角坐标系，在 2D 绘图技术中，使用平面直角坐标系来定位和描述图形。</p>
+
+<p>平面直角坐标系的概念读者应该比较熟悉，不在此赘述。需要注意的是，在 2D 屏幕设备中，使用的坐标系 y 轴方向都是向下的，这点跟数学上的习惯是相反的。这会让角度的扫描方向也是相反的（统一的描述为：从 x 轴正方向到 y 轴正方向为正角）。</p>
+
+<p><img src="/img/coordinate-and-transform/difference-between-math.png" alt="屏幕坐标系（左）和数学坐标系（右）"></p>
+
+<h2>当前坐标系与参照坐标系</h2>
+
+<p>在 2D 绘图中，每个绘图元素都有自己的一个坐标系，称为 <code>当前坐标系</code> 或 <code>自身坐标系</code>。当元素 A 作为容器元素 B 的一个子元素的时候，会很自然地把元素 B 的坐标系可以作为元素 A 的 <code>参照坐标系</code>。</p>
+
+<p>默认情况下，A 的当前坐标系和其参照坐标系原点和轴是重合的。如果 A 进行了 <code>坐标变换</code> （文章后面会详细介绍），那么这两个坐标系不再重合，而且这个时候 A 在相对于 B 的 <code>参照坐标系</code> 中看起来也发生了变换。</p>
+
+<p>考虑下面一段使用 <a href="https://github.com/fex-team/kity">Kity</a> 绘图的代码：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Rect</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>  <span class="c1">// 在 (0, 0) 处创建一个 50 x 50 的矩形</span>
+<span class="kd">var</span> <span class="nx">b</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Paper</span><span class="p">();</span>             <span class="c1">// 创建 Paper 作为容器</span>
+<span class="nx">b</span><span class="p">.</span><span class="nx">addShape</span><span class="p">(</span><span class="nx">a</span><span class="p">);</span>                        <span class="c1">// 讲矩形放置在容器里</span>
+<span class="nx">a</span><span class="p">.</span><span class="nx">setTranslate</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">);</span>               <span class="c1">// 把 a 的坐标系平移 (40, 40)</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">a</span><span class="p">.</span><span class="nx">getBoundaryBox</span><span class="p">())</span>       <span class="c1">// 返回：{ x: 0, y: 0, width: 50, height: 50 }</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">a</span><span class="p">.</span><span class="nx">getRenderBox</span><span class="p">())</span>         <span class="c1">// 返回：{ x: 30, y: 40, width: 50, height: 50 }</span>
+</code></pre></div>
+<p><img src="/img/coordinate-and-transform/reference-coordinate.png" alt="当前坐标系和参照坐标系"></p>
+
+<p><code>getBoundaryBox()</code> 忠实地返回元素在当前坐标系中所占的矩形区域，而 <code>getRenderBox()</code> 则返回了元素在参照坐标系中所占的矩形区域。</p>
+
+<p>细心的读者不难发现，参照坐标系是需要有一个参照物的，在上面的描述中，A 的参照物一直是其父容器 B。<code>getRenderBox()</code> 方法默认选择元素的父容器作为其参照物。</p>
+
+<p>通俗来讲，元素在自身坐标系中的描述的是“我原本的样子”，而在参照坐标系中描述的是“我在别人眼里的样子”。“我的样子”在“别人眼中”改变了，不是因为我自己改变了，而是别人用了“特别的方式”看我。这里“特别的方式”就是别人把我的自身坐标转换为它的自身坐标。你可以这么认为：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">参照坐标 = 坐标变换 ( 自身坐标, 变换系数 )
+</code></pre></div>
+<p>在元素上定义的坐标变换是相对于父容器的坐标变换，但是未必是最终相对于某个参照坐标系的坐标变换。这句话理解起来有点别扭，不妨看一个例子：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="kd">var</span> <span class="nx">paper</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Paper</span><span class="p">();</span>
+<span class="kd">var</span> <span class="nx">group</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Group</span><span class="p">();</span>
+<span class="kd">var</span> <span class="nx">rect</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Rect</span><span class="p">(</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span> <span class="p">);</span>
+
+<span class="nx">paper</span><span class="p">.</span><span class="nx">addShape</span><span class="p">(</span><span class="nx">group</span><span class="p">);</span>
+<span class="nx">group</span><span class="p">.</span><span class="nx">addShape</span><span class="p">(</span><span class="nx">rect</span><span class="p">);</span>
+
+<span class="nx">rect</span><span class="p">.</span><span class="nx">setTranslate</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">30</span><span class="p">);</span>
+<span class="nx">group</span><span class="p">.</span><span class="nx">setTranslate</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">);</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">rect</span><span class="p">.</span><span class="nx">getBoundaryBox</span><span class="p">());</span>    <span class="c1">// { x: 0, y: 0, width: 50, height: 50 }</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">rect</span><span class="p">.</span><span class="nx">getRenderBox</span><span class="p">());</span>      <span class="c1">// { x: 40, y: 30, width: 50, height: 50 }</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">rect</span><span class="p">.</span><span class="nx">getRenderBox</span><span class="p">(</span><span class="nx">paper</span><span class="p">));</span> <span class="c1">// { x: 70, y: 70, widht: 50, height: 50 }  </span>
+</code></pre></div>
+<p><img src="/img/coordinate-and-transform/deep-transform.png" alt="多层变换"></p>
+
+<p>rect 相对于 group 的坐标变换是 <code>translate(40, 30)</code>，group 相对于 paper 的坐标变换是 <code>translate(40, 30)</code>。rect 计算相对于 paper 的坐标变换的时候，要把中间的每一层坐标变换都算上，最终的结果是 <code>translate(70, 70)</code>。</p>
+
+<h2>坐标变换</h2>
+
+<p>坐标变换是采用一定的数学方法将一个坐标系的坐标变换为另一个坐标系的坐标的过程。本文上面一部分内容已经涉及到了一些简单的坐标变换（平移）。</p>
+
+<p>大多数 2D 绘图引擎针对 2D 坐标只支持线性变换。线性变换能解决很大一部分我们对图形变换的需求，比如平移、旋转、缩放、拉伸、镜像、对称等等。</p>
+
+<p>线性变换的坐标转换过程是一个线性运算：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">X&#39; = aX + cY + e
+Y&#39; = bX + dY + f
+</code></pre></div>
+<p>该方程可以写成矩阵形式：</p>
+
+<p><img src="/img/coordinate-and-transform/transfrom-equation.png" alt="线性变换方程"></p>
+
+<p><code>X&#39;</code> 和 <code>Y&#39;</code> 元素是在参照坐标系中的坐标，<code>X</code> 和 <code>Y</code> 是元素在当前坐标系中的坐标。<code>a</code>、<code>b</code>、<code>c</code>、<code>d</code>、<code>e</code>、<code>f</code> 是线性变换方程的系数。而矩阵 [[a, c, e], [b, d, f], [0, 0, 1]] 被称为二维线性变换矩阵。</p>
+
+<h3>常用的变换。</h3>
+
+<h4>平移</h4>
+
+<p>考虑让 c = 0, y = 0, a = 1, d = 1。则变换方程变为：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">X&#39; = X + e
+Y&#39; = Y + f
+</code></pre></div>
+<p>X 坐标和 Y 坐标转换后都只是加了一个简单的常数。所以在参照坐标系中，可以看到原本的元素平移了。</p>
+
+<p><img src="/img/coordinate-and-transform/translate.png" alt="平移"></p>
+
+<h4>旋转</h4>
+
+<p>设旋转的角度是 ø, 则线性变换系数是： a = cos(ø), b = sin(ø), c = -sin(ø), d = cos(ø)，e 和 f 为 0。旋转的线性变换系数可以通过余弦定理求出，有兴趣的同学可以自行证明。</p>
+
+<p><img src="/img/coordinate-and-transform/rotate.png" alt="旋转"></p>
+
+<h4>缩放</h4>
+
+<p>a 和 d 是直接控制 X 坐标和 Y 坐标缩放的，让 a 和 d 为 2，其他系数为 0，图形在两个维度上都放大为原来的 2 倍。</p>
+
+<p><img src="/img/coordinate-and-transform/scale.png" alt="缩放"></p>
+
+<h3>变换列表</h3>
+
+<p>坐标经过一次变换 <em>M[1]</em> 之后，还可以继续经过变换 <em>M[2]</em>、<em>M[3]</em>、<em>M[4]</em> ... <em>M[n]</em>。最终变换出来的结果是这些变换矩阵的乘积：</p>
+
+<p><em>CTM</em> = <em>M[n]</em> · <em>M[n-1]</em> · ... · <em>M[2]</em> · <em>M[1]</em> · <em>M[0]</em></p>
+
+<p>注意，后面的变换要乘在前面。矩阵的乘法不具有交换律。这意味着先旋转再平移和先平移再旋转是不一样的结果。看下面一个实例：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Rect</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">).</span><span class="nx">fill</span><span class="p">(</span><span class="s1">&#39;red&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">b</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Rect</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">).</span><span class="nx">fill</span><span class="p">(</span><span class="s1">&#39;blue&#39;</span><span class="p">);</span>
+
+<span class="nx">paper</span><span class="p">.</span><span class="nx">addShapes</span><span class="p">([</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">]);</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">setMatrix</span><span class="p">(</span><span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Matrix</span><span class="p">().</span><span class="nx">translate</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">).</span><span class="nx">rotate</span><span class="p">(</span><span class="mi">30</span><span class="p">));</span>
+<span class="nx">b</span><span class="p">.</span><span class="nx">setMatrix</span><span class="p">(</span><span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Matrix</span><span class="p">().</span><span class="nx">rotate</span><span class="p">(</span><span class="mi">30</span><span class="p">).</span><span class="nx">translate</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">));</span>
+</code></pre></div>
+<p><img src="/img/coordinate-and-transform/transform-seq.png" alt="变换顺序"></p>
+
+<p>旋转始终围绕参照坐标系的原点进行。b 是先旋转再平移的，在旋转的时候，原点还是重合的。而 a 是先平移后旋转的，旋转的时候自身坐标的原点已经偏离了 b 的参照坐标系的原点。两个效果是有差别的。</p>
+
+<p>变换列表在计算图形最终渲染结果的时候需要用到。计算具有层级结构的元素坐标变换需要把每个祖先的坐标变换算上。考虑一下的图形层级：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">paper
+|--g1
+|  |--g2
+|  |  |--rect
+.. .. ..
+</code></pre></div>
+<p>则 rect 在渲染到 paper 的时候，进行了以下坐标变换：</p>
+
+<p><em>CTM<sub>rect</sub></em> = <em>M<sub>g1</sub></em> · <em>M<sub>g2</sub></em> · <em>M<sub>rect</sub></em></p>
+
+<h2>在 Kity 中合理使用坐标系和线性变换</h2>
+
+<p>在 Kity 当中，提供了强大的坐标计算和变换能力。</p>
+
+<h3>获得相对于参照坐标系的坐标变换</h3>
+
+<p>使用 <code>Shape.getTransform(refer)</code> 方法获得一个元素坐标系到指定参照物的坐标变换。<code>refer</code>  为指定的参照物，为空则使用父容器为参照物。</p>
+
+<h3>获得在参照坐标系中的矩形区域</h3>
+
+<p>使用 <code>Shape.getRenderBox(refer)</code> 获得一个元素在指定的元素的坐标系中的矩形区域。<code>refer</code> 为参照物，为空则使用父容器为参照物。</p>
+
+<h3>设置相对于父容器的坐标变换</h3>
+
+<p>Kity 在一个元素上允许同时设置四个坐标变换：矩阵、平移、旋转、缩放。他们默认都是 null，即和父元素的坐标系重合。四个变换的接口分别是：</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="nx">shape</span><span class="p">.</span><span class="nx">setMatrix</span><span class="p">(</span><span class="k">new</span> <span class="nx">kity</span><span class="p">.</span><span class="nx">Matrix</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">,</span> <span class="nx">c</span><span class="p">,</span> <span class="nx">d</span><span class="p">,</span> <span class="nx">e</span><span class="p">,</span> <span class="nx">f</span><span class="p">))</span> <span class="c1">// 矩阵</span>
+<span class="nx">shape</span><span class="p">.</span><span class="nx">setScale</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">);</span>       <span class="c1">// 缩放</span>
+<span class="nx">shape</span><span class="p">.</span><span class="nx">setRotate</span><span class="p">(</span><span class="mi">30</span><span class="p">);</span>        <span class="c1">// 旋转</span>
+<span class="nx">shape</span><span class="p">.</span><span class="nx">setTranslate</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">);</span> <span class="c1">// 平移</span>
+</code></pre></div>
+<p>需要注意的是，无论变换接口的调用顺序如何，Kity 都是以以下顺序变换的：</p>
+
+<ol>
+<li>矩阵变换</li>
+<li>缩放</li>
+<li>旋转</li>
+<li>平移</li>
+</ol>
+
+<p>这样是为了保证最常用的平移始终保持在参照坐标系的方向上进行。如果需要精细控制变换，可以通过设置变换矩阵来实现。</p>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                作者：<a href="http://techird.com" target="_blank">techird (http://techird.com)</a> - 别人笑我太扯淡，我笑他们不扯淡 <br/>
+                <a href="http://techird.com" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#techird">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="2D 绘图技术中的坐标系统与坐标变换"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/04/coordinate-and-transform";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+

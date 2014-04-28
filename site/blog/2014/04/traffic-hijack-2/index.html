@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="流量劫持能有多大危害？_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="流量劫持能有多大危害？,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>流量劫持能有多大危害？ FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                <img src="/img/avatar/zjcqoo.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">流量劫持能有多大危害？</h1>
+            <div class="author">zjcqoo | 10 Apr 2014</div>
+        </div>
+
+        <div class="content">
+        <p><a href="http://fex.baidu.com/blog/2014/04/traffic-hijack/">上一篇文章</a>，介绍了常见的流量劫持途径。然而无论用何种方式获得流量，只有加以利用才能发挥作用。</p>
+
+<p>不同的劫持方式，获得的流量也有所差异。DNS 劫持，只能截获通过域名发起的流量，直接使用 IP 地址的通信则不受影响；CDN 入侵，只有浏览网页或下载时才有风险，其他场合则毫无问题；而网关被劫持，用户所有流量都难逃魔掌。</p>
+
+<p>在本文中，我们通过技术原理，讲解如下问题：</p>
+
+<ul>
+<li><p>为什么喜欢劫持网页？</p></li>
+<li><p>只浏览不登陆就没事吗？</p></li>
+<li><p>自动填写表单有风险吗？</p></li>
+<li><p>离开劫持环境还受影响吗？</p></li>
+<li><p>使用 HTTPS 能否避免劫持？</p></li>
+<li><p>流量劫持能否控制我电脑？</p></li>
+</ul>
+
+<h2>为什么喜欢劫持网页？</h2>
+
+<p>理论上说，劫持到用户的流量数据，也就获得相应程序的网络通信。但在现实中，数据并不代表真实内容。一些重要的网络程序，都是私有的二进制协议，以及各种加密方式。想通过流量来还原出用户的聊天信息、支付密码，几乎是不可能的。即使花费各种手段，破解出某个程序的通信协议，然而一旦程序升级改变了协议格式，或许就前功尽弃了。因此，很难找到种一劳永逸的客户端劫持方案。</p>
+
+<p>然而，并非所有程序都是客户端的。一种新兴的应用模式 —— WebApp，发展是如此之快，以至于超越客户端之势。在如今这个讲究跨平台、体验好，并有云端支持的年代，WebApp 越来越火热。各种应用纷纷移植成网页版，一些甚至替代了客户端。同时，也造就了流量劫持前所未有的势头。</p>
+
+<p>WebApp，其本质仍是普通的网页而已。尽管网页技术在近些年里有了很大的发展，各种新功能一再增加，但其底层协议始终没有太大的改进 —— HTTP，一种使用了 20 多年古老协议。</p>
+
+<p>在 HTTP 里，一切都是明文传输的，流量在途中可随心所欲的被控制。传统程序事先已下至本地，运行时只有通信流量；而在线使用的 WebApp，流量里既有通信数据，又有程序的界面和代码，劫持简直轻而易举。</p>
+
+<p>上一篇也提到，如果在户外没有 3G 信号的地方钓鱼，无法将获得的流量转发到外网。然而，使用网页这一切就迎刃而解。我们完全可以在自己的设备上搭建一个站点，留住用户发起离线攻击。对于那些连上 WiFi 能自动弹网页的设备，那就更容易入侵了。</p>
+
+<p>因此，劫持网页流量成了各路黑客们的钟爱，一种可在任意网页发起 XSS 的入侵方式。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/http-inject.png" style="max-width:840px;" /></div>
+
+<p>下面，开始我们的攻防之旅。</p>
+
+<h2>只浏览不登陆就没事吗？</h2>
+
+<p>每当砖家出来提醒时，总免不了这么一句：公共场合尽量不登录账号。于是，大家就认为只看网页不登陆就平安无事了。</p>
+
+<p>如果是公共的电脑，那也就无所谓；否则，自己的一些账号可能就倒霉了。</p>
+
+<p>在自己的设备上，大家都会记住各种账号的登录状态，反正只有自己用，也没什么大不了的。然而，在被劫持的网络里，一切皆有可能发生。即使浏览再平常不过的网页，或许一个悄无声息的间谍脚本已暗藏其中，正偷偷访问你那登录着的网页，操控起你的账号了。</p>
+
+<p>听起来似乎很玄乎吧，砖家似乎也没说已登录的账号会怎么样。难道随便一个网页，就能让各种账号被控制吗？</p>
+
+<p>大家都知道，HTTP 是无状态的，不像传统协议有个『会话』之类的概念。各种账号的登录状态，只能依靠浏览器的 Cookie 来实现。因此，只要有了的 Cookie 也就获得了用户账号的使用权。</p>
+
+<p>和传统 XSS 攻击不同，流量劫持可以得到任何通信数据，当然也包括那些受 HttpOnly 保护的 Cookie。攻击脚本只需对某个站点发起请求，黑客即可在中途劫持到传输的 Cookie 数据。如果同时发起众多站点，就能覆盖相当一部分目标了。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/cookie-sniffer.png" style="max-width:840px;" /></div>
+
+<p>这种请求未必要真正访问一次页面，仅仅将 URL 作为图片加载，将目标站点的 Cookie 送出即可。</p>
+
+<p>黑客得到 Cookie，即可在自己浏览器里还原出登录状态。尽管你确实没有登录操作，但那些已登录的却能出卖你。</p>
+
+<p><em>防范措施</em>：访问一些重要的网站，尽量不要记住登录状态，以免 Cookie 被泄露。不过，只要网站绑定了 Cookie 和 IP 段，这招的危害程度就大幅降低了，仅凭 HttpOnly 还是很不靠谱的。</p>
+
+<h2>自动填写表单有风险吗？</h2>
+
+<p>使用上面的方法获得 Cookie，即使能控制账号，但其密码仍无法得知，随时都有可能失去控制权。</p>
+
+<p>不过，一些用户有让浏览器自动保存密码的习惯。通过这点，我们是否能套出记住的密码来呢？</p>
+
+<p>分析下浏览器是如何自动填写页面表单的。其实很简单，浏览器发现页面 URL 和表单名匹配记录里的，就自动填上了。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/save-pwd.png" style="max-width:840px;" /></div>
+
+<p>要是在流量可控的网络里，剥离页面所有内容只剩表单，又会如何？</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/match-pwd.png" style="max-width:840px;" /></div>
+
+<p>保存着的密码仍能自动填上，并且可被脚本访问到！</p>
+
+<p>如果我们在用户访问的页面里，创建大量的隐藏框架页，即可尝试获取各种网站保存着的账号了。（不过如今 Chrome 框架页已经不会自动填写了。具体实现和浏览器有关）。</p>
+
+<p>不过，即使框架页不自动填写，但主页面总得保留该功能吧。如果发现用户某个打开着的网页很久没有交互了，可悄悄跳转到如上那样的纯表单页，无论能否获取数据，都将继续跳转，一个接一个的尝试。。。直到用户切回窗口，再恢复到原先那个页面。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/save-sniffer.png" style="max-width:840px;" /></div>
+
+<p>由于泄露的是明文的账号和密码，即使数量不多，也能通过社工获取到用户的更多信息，最终导致更严重的泄露。</p>
+
+<p><em>防范措施</em>：所以无论是 Cookie 记住登录，还是浏览器自动填表，重要的账号都应慎用。</p>
+
+<blockquote>
+<p>浏览器的自动填表也应增加些安全策略，例如必须有用户的交互才开始填写，规定的时间里只能填有限次。</p>
+</blockquote>
+
+<h2>离开劫持环境还受影响吗？</h2>
+
+<p>或许你在想，网络再怎么不安全，离开之后就应该没事了吧。</p>
+
+<p>有时在公共场合赶上免费的 WiFi，打开网页看一会新闻，是常有的事。这么短的时间里能有多大的事。不过在入侵脚本面前，一小会和长久并没太大区别。机会只要出现了，无论多么短暂都能渗透。</p>
+
+<p>如果只看重眼前利益，这种短暂的入侵并没多少利用价值；但若放远目光，能让攻击在今后发起，那就不再局限于时间和空间了。因此，我们需要一个时光机，让入侵脚本穿越到用户未来的时空运行。</p>
+
+<p>若用传统 XSS 的思维，这几乎无法实现。但在流量劫持面前，一切皆有可能 —— 因为我们能控制任意流量！</p>
+
+<h3>HTTP 缓存投毒</h3>
+
+<p>上一篇文章提到，但凡有缓存的地方都是大有可为的。显然，对于有着复杂的 HTTP 缓存系统来说，存在缺陷是在所难免了。这种简单的纯文本协议，几乎没有一种签名机制，来验证内容的真实性。即使页面被篡改了，浏览器也完全无法得知，甚至连同注入的脚本也一块缓存起来。</p>
+
+<p>于是，我们可以将『缓存投毒』的概念，引入 HTTP 协议里。但凡具备可执行的资源，都可以通过预加载带毒的版本，将其提前缓存起来。</p>
+
+<p>为了将缓存的有效期发挥到极致，我们事先在各大网站上，找出一些过期时间长、很久没有修改的资源，评估其未来变化不大的可能。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/find-stable-res.png" style="max-width:840px;" /></div>
+
+<p>当用户打开任意一个 HTTP 网页时，注入的 XSS 代码开始预加载这些资源。由于一切流量都在控制之中，我们可以完全不走代理，而是返回自己的攻击脚本。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/cache-poisoning.png" style="max-width:840px;" /></div>
+
+<p>用户浏览器收到回复后，就将其一一缓存起来了。我们可以事先收集大量的资源地址，让用户在线的时间里，尽可能多的缓存受到感染。</p>
+
+<p>未来，用户访问引用了这些资源的网站时，入侵脚本将穿越时空，从沉睡中唤醒。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/cache-actived.png" style="max-width:840px;" /></div>
+
+<p>只要用户不清空缓存，这些被感染的脚本始终附着在浏览器缓存里，直到用户强制刷新页面时或许才能解脱。<a href="http://www.cnblogs.com/index-html/p/wifi_hijack_3.html">更多细节可参考这里</a>。</p>
+
+<h3>离线储存投毒</h3>
+
+<p>不过，有些网站使用的都是很短的缓存，上述的入侵方式似乎就无能为力了。不过，HTML5 时代带来了一项新的缓存技术 —— 离线储存。由于它没有过期时间，因此适用于任意网页的投毒！</p>
+
+<p>类似的，当用户触发了我们的注入脚本之后，我们创建一个隐形的框架页，加载被感染的网页。同样，通过流量劫持，我们返回一个简单的页面，里面包含一个带有 manifest 属性的 HTML 文档，以及后期运行的脚本。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/offline-poisoning.png" style="max-width:840px;" /></div>
+
+<p>由于通过隐藏框架访问了这个页面，用户并不知情，但尽职的浏览器却将其缓存起来。</p>
+
+<p>未来，用户打开被感染的网页时，浏览器直接从离线储存里取出，其中布置的脚本因此触发。</p>
+
+<p>由于是个空白页面，因此需要填充上真实的网站内容。最简单的方法，就是嵌套一个原页面的框架，并在 URL 里加上随机数，确保是最新的在线内容。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/offline-actived.png" style="max-width:840px;" /></div>
+
+<p>因为嵌套的是同域框架，最终仍能被入侵脚本所控制。</p>
+
+<p>不过，离线存储投毒的后期影响会小一些。未来用户在安全的网络里打开页面时，浏览器会再次请求 .appcache 文件。由于这个文件并不一定存在，因此浏览器很可能删除掉离线数据。</p>
+
+<p>理论上说只有一次的触发机会，但它没有过期时间，适用于任意 HTTP 页面投毒。</p>
+
+<p><em>防范措施</em>：在不安全的场合，尽量使用『隐身模式』浏览网页。例如 Chrome 里按 Ctrl+Shift+N 就能调出，可将自己处于隔离的沙盒里。</p>
+
+<p>FireFox 浏览器存储离线文件时，会有用户交互提示，提醒用户是否有这必要。</p>
+
+<blockquote>
+<p>也许不久后，框架页面不再被离线储存所接受，新标准随时都有可能改变。但 HTTP 缓存投毒是协议栈的缺陷，因此很难防范，下一篇会发现实际入侵效果非常理想。</p>
+</blockquote>
+
+<h2>使用 HTTPS 能否避免劫持？</h2>
+
+<p>如果从密码学的角度来说，使用了 SSL 加密的数据确实难以破解，更不用谈修改了。</p>
+
+<p>然而，惹不起但总躲得起吧。虽然无法破解，但流量仍掌握在自己手中，走哪条路还是由我说的算，完全可以绕过你。</p>
+
+<h3>偷换证书</h3>
+
+<p>不同于简单的 HTTP 代理，HTTPS 服务需要一个权威机构认定的证书才算有效。自己随便签发的证书，显然是没有说服力的，HTTPS 客户端因此会质疑。</p>
+
+<p>在过去，这并不怎么影响使用过程，无非弹出一个无效的证书之类的提示框。大多用户并不明白是什么情况，就点了继续，导致允许了黑客的伪证书，HTTPS 流量因此遭到劫持。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/ssl-proxy.png" style="max-width:840px;" /></div>
+
+<p>在经历越来越多的入侵事件之后，人们逐渐意识到，不能再轻易的让用户接受不信任的证书了。如今，主流浏览器对此都会给予严重的警告提示，避免用户进入伪安全站点。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/ssl-err.png" style="max-width:840px;" /></div>
+
+<p>如果重要的账户网站遇到这种情况，无论如何都不该继续，否则大门钥匙或许就落入黑客之手。</p>
+
+<p>因此，这种偷换证书的劫持，在安全意识越来越高的今天，很难再发挥实效了。我们需要一个更隐蔽的方式来躲开加密数据。</p>
+
+<h3>过滤 HTTPS 跳转</h3>
+
+<p>事实上，在 PC 端上网很少有直接进入 HTTPS 网站的。例如支付宝网站，大多是从淘宝跳转过来，而淘宝使用的仍是不安全的 HTTP 协议。如果在淘宝网的页面里注入 XSS，屏蔽对 HTTPS 的页面访问，用 HTTP 取而代之，那么用户也就永远无法进入安全站点了。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/from-http.png" style="max-width:840px;" /></div>
+
+<p>尽管地址栏里没有出现 HTTPS 的字样，但域名看起来也是正确的，大多用户都会认为不是钓鱼网站，因此也就忽视了。</p>
+
+<p>因此，只要入口页是不安全的，那么之后的页面再安全也无济于事。</p>
+
+<p>当然也有一些用户通过输网址访问的，他们输入了 <code>www.alipaly.com</code> 就敲回车进入了。然而，浏览器并不知道这是一个 HTTPS 的站点，于是使用默认的 HTTP 去访问。不过这个 HTTP 版的支付宝的确也存在，其唯一功能就是重定向到自己 HTTPS 站点上。</p>
+
+<p>劫持流量的中间人一旦发现有重定向到 HTTPS 站点的，显然不愿意让用户走这条不受自己控制的路。于是拦下重定向的命令，自己去获取重定向后的站点内容，然后再回复给用户。于是，用户始终都是在 HTTP 站点上访问，自然就可以无限劫持了。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/direct-http.png" style="max-width:840px;" /></div>
+
+<h3>搜索引擎劫持</h3>
+
+<p>事实上，HTTPS 站点还有个很大的来源 —— 搜索引擎。遗憾的是，国产搜索引擎几乎都不提供 HTTPS 服务。因此在不安全的网络里，搜索结果是不具备任何权威的。</p>
+
+<p><em>防范措施</em>：重要的网站必定使用 HTTPS 协议，登陆时需格外留意。</p>
+
+<blockquote>
+<p>国外的大型网站几乎都提供 HTTPS 服务，甚至是默认的标准。相比国内只有少数重要的服务才使用，绝大多数的信息都是在明文传输。这是为了方便什么来着，你猜。</p>
+</blockquote>
+
+<h2>流量劫持能否控制我电脑？</h2>
+
+<p>如果不考虑一些浏览器安全漏洞，理论上说网页与系统是完全隔离的，因此无需担心系统受到影响。</p>
+
+<h3>钓鱼插件</h3>
+
+<p>有时为了能让网页获得更多的在线能力，安装插件必不可少，例如支付控件、在线播放器等等。在方便使用的同时，也埋下了安全隐患。</p>
+
+<p>如果是一些小网站强迫用户安装插件的，大家几乎都是置之不理。但若一些正规的大网站，提示用户缺少某些插件，并且配上一些专业的提示，相信大多都会选择安装。而这一切，通过被注入的攻击脚本完全能办到。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/plugin-phishing.png" style="max-width:840px;" /></div>
+
+<p>不过，正规的插件都是有完整的数字签名的，而伪造的很难躲过浏览器的验证，会出现各种安全提示。因此，攻击者往往使用直接下载的方式，提示用户保存并打开安装包。</p>
+
+<h3>页面提权</h3>
+
+<p>现在越来越多的应用程序，选择使用内嵌网页来简化界面的开发，在移动设备上更是普遍。</p>
+
+<p>通常为了能让页面和客户端交互，赋予一些本地程序的接口供调用，因此具有了较高的权限。不过，正常情况下嵌入的都是受白名单限制的可信页面，因此不存在安全隐患。</p>
+
+<p>然而在被劫持的网络里，一切明文传输的数据都不再具备可信度。同样的脚本注入，就能获得额外的权限了。</p>
+
+<div class="post-img"><img src="/img/traffic-hijack-2/hybrid-app.png" style="max-width:840px;" /></div>
+
+<p>一些带有缺陷的系统，攻击脚本甚至能获得出乎意料的能力。通过之前提到的网页缓存投毒，这颗埋下的地雷随时都有可能触发。</p>
+
+<h3>下载程序</h3>
+
+<p>即使上网从不安装插件，但是下载程序还是经常需要的。由于大多数的下载网站，使用的都是 HTTP 流量，因此劫持者能轻易的修改可执行文件，将其感染上病毒或木马，甚至完全替换成另一个程序。</p>
+
+<p>用户总认为从官网上下载的肯定没问题，于是就毫无顾虑的打开了。这时，入侵的不再是浏览器环境，而是能控制整个系统了。</p>
+
+<p><em>防范措施</em>：如果是从浏览器里下载的程序，留意是否具有数字签名，正规的厂商几乎都会提供。如果想试用一些来路不明的小程序，保存到虚拟机里使用就放心多了。</p>
+
+<blockquote>
+<p>未来 SPDY 技术普及的时候，就再不用担心网页劫持这些事。它将 HTTP 协议封装在加密的流量里传输，想劫持一个普通网页都很困难了。</p>
+</blockquote>
+
+<h2>结尾</h2>
+
+<p>暂时就说到这。事实上类似 XSS 的攻击方式还有很多，这里只谈了一些能和流量劫持配合使用的。利用上一篇讲述的各种劫持途径，配合本文提到的入侵方式，可以劫持不少用户了。下一篇，将演示如何利用这些原理，发起实战攻击。</p>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                作者：<a href="http://cnblogs.com/index-html" target="_blank">zjcqoo (http://cnblogs.com/index-html)</a> - <b>Hello</b> <br/>
+                <a href="http://cnblogs.com/index-html" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#zjcqoo">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="流量劫持能有多大危害？"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/04/traffic-hijack-2";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+

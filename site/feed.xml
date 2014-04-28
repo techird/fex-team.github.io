@@ -1,0 +1,1991 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>FEX 百度 Web 前端研发部</title>
+        <description></description>      
+        <link>http://fex.baidu.com</link>
+        <atom:link href="http://fex.baidu.com/feed.xml" rel="self" type="application/rss+xml" />
+        
+            <item>
+                <title>2D 绘图技术中的坐标系统与坐标变换</title>
+                <description>作者：techird &lt;br&gt; &lt;p&gt;本文介绍在 2D 绘图技术中的坐标系统和坐标变换的相关知识。同时介绍 Kity 在这方面提供的 API 。希望这些知识对于需要进行图形应用开发的同学会有所帮助。&lt;/p&gt;
+
+&lt;h2&gt;概述&lt;/h2&gt;
+
+&lt;p&gt;坐标系统帮助我们在一个空间中定位物件和描述物件的几何属性。坐标系统有其维度属性，描述三维空间的物件我们需要三维的坐标系统，本文针对的是 2D 绘图技术中的坐标系统，故文章后面坐标系统均指二维坐标系统。&lt;/p&gt;
+
+&lt;p&gt;在平面当中，最常见的坐标系统是&lt;a href=&quot;http://zh.wikipedia.org/wiki/%E7%AC%9B%E5%8D%A1%E5%84%BF%E5%9D%90%E6%A0%87%E7%B3%BB&quot;&gt;笛卡尔坐标系&lt;/a&gt;和&lt;a href=&quot;http://zh.wikipedia.org/wiki/%E6%9E%81%E5%9D%90%E6%A0%87%E7%B3%BB&quot;&gt;极坐标系&lt;/a&gt;。&lt;a href=&quot;http://zh.wikipedia.org/wiki/%E7%AC%9B%E5%8D%A1%E5%84%BF%E5%9D%90%E6%A0%87%E7%B3%BB&quot;&gt;笛卡尔坐标系&lt;/a&gt;就是我们熟知的平面直角坐标系，在 2D 绘图技术中，使用平面直角坐标系来定位和描述图形。&lt;/p&gt;
+
+&lt;p&gt;平面直角坐标系的概念读者应该比较熟悉，不在此赘述。需要注意的是，在 2D 屏幕设备中，使用的坐标系 y 轴方向都是向下的，这点跟数学上的习惯是相反的。这会让角度的扫描方向也是相反的（统一的描述为：从 x 轴正方向到 y 轴正方向为正角）。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/difference-between-math.png&quot; alt=&quot;屏幕坐标系（左）和数学坐标系（右）&quot;&gt;&lt;/p&gt;
+
+&lt;h2&gt;当前坐标系与参照坐标系&lt;/h2&gt;
+
+&lt;p&gt;在 2D 绘图中，每个绘图元素都有自己的一个坐标系，称为 &lt;code&gt;当前坐标系&lt;/code&gt; 或 &lt;code&gt;自身坐标系&lt;/code&gt;。当元素 A 作为容器元素 B 的一个子元素的时候，会很自然地把元素 B 的坐标系可以作为元素 A 的 &lt;code&gt;参照坐标系&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;默认情况下，A 的当前坐标系和其参照坐标系原点和轴是重合的。如果 A 进行了 &lt;code&gt;坐标变换&lt;/code&gt; （文章后面会详细介绍），那么这两个坐标系不再重合，而且这个时候 A 在相对于 B 的 &lt;code&gt;参照坐标系&lt;/code&gt; 中看起来也发生了变换。&lt;/p&gt;
+
+&lt;p&gt;考虑下面一段使用 &lt;a href=&quot;https://github.com/fex-team/kity&quot;&gt;Kity&lt;/a&gt; 绘图的代码：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;  &lt;span class=&quot;c1&quot;&gt;// 在 (0, 0) 处创建一个 50 x 50 的矩形&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Paper&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;             &lt;span class=&quot;c1&quot;&gt;// 创建 Paper 作为容器&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addShape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;                        &lt;span class=&quot;c1&quot;&gt;// 讲矩形放置在容器里&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setTranslate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;// 把 a 的坐标系平移 (40, 40)&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getBoundaryBox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;       &lt;span class=&quot;c1&quot;&gt;// 返回：{ x: 0, y: 0, width: 50, height: 50 }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getRenderBox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;())&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;// 返回：{ x: 30, y: 40, width: 50, height: 50 }&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/reference-coordinate.png&quot; alt=&quot;当前坐标系和参照坐标系&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;getBoundaryBox()&lt;/code&gt; 忠实地返回元素在当前坐标系中所占的矩形区域，而 &lt;code&gt;getRenderBox()&lt;/code&gt; 则返回了元素在参照坐标系中所占的矩形区域。&lt;/p&gt;
+
+&lt;p&gt;细心的读者不难发现，参照坐标系是需要有一个参照物的，在上面的描述中，A 的参照物一直是其父容器 B。&lt;code&gt;getRenderBox()&lt;/code&gt; 方法默认选择元素的父容器作为其参照物。&lt;/p&gt;
+
+&lt;p&gt;通俗来讲，元素在自身坐标系中的描述的是“我原本的样子”，而在参照坐标系中描述的是“我在别人眼里的样子”。“我的样子”在“别人眼中”改变了，不是因为我自己改变了，而是别人用了“特别的方式”看我。这里“特别的方式”就是别人把我的自身坐标转换为它的自身坐标。你可以这么认为：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;参照坐标 = 坐标变换 ( 自身坐标, 变换系数 )
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在元素上定义的坐标变换是相对于父容器的坐标变换，但是未必是最终相对于某个参照坐标系的坐标变换。这句话理解起来有点别扭，不妨看一个例子：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;paper&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Paper&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;group&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;paper&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addShape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addShape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setTranslate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;group&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setTranslate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;40&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getBoundaryBox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;    &lt;span class=&quot;c1&quot;&gt;// { x: 0, y: 0, width: 50, height: 50 }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getRenderBox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;());&lt;/span&gt;      &lt;span class=&quot;c1&quot;&gt;// { x: 40, y: 30, width: 50, height: 50 }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getRenderBox&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;paper&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// { x: 70, y: 70, widht: 50, height: 50 }  &lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/deep-transform.png&quot; alt=&quot;多层变换&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;rect 相对于 group 的坐标变换是 &lt;code&gt;translate(40, 30)&lt;/code&gt;，group 相对于 paper 的坐标变换是 &lt;code&gt;translate(40, 30)&lt;/code&gt;。rect 计算相对于 paper 的坐标变换的时候，要把中间的每一层坐标变换都算上，最终的结果是 &lt;code&gt;translate(70, 70)&lt;/code&gt;。&lt;/p&gt;
+
+&lt;h2&gt;坐标变换&lt;/h2&gt;
+
+&lt;p&gt;坐标变换是采用一定的数学方法将一个坐标系的坐标变换为另一个坐标系的坐标的过程。本文上面一部分内容已经涉及到了一些简单的坐标变换（平移）。&lt;/p&gt;
+
+&lt;p&gt;大多数 2D 绘图引擎针对 2D 坐标只支持线性变换。线性变换能解决很大一部分我们对图形变换的需求，比如平移、旋转、缩放、拉伸、镜像、对称等等。&lt;/p&gt;
+
+&lt;p&gt;线性变换的坐标转换过程是一个线性运算：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;X&amp;#39; = aX + cY + e
+Y&amp;#39; = bX + dY + f
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;该方程可以写成矩阵形式：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/transfrom-equation.png&quot; alt=&quot;线性变换方程&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;X&amp;#39;&lt;/code&gt; 和 &lt;code&gt;Y&amp;#39;&lt;/code&gt; 元素是在参照坐标系中的坐标，&lt;code&gt;X&lt;/code&gt; 和 &lt;code&gt;Y&lt;/code&gt; 是元素在当前坐标系中的坐标。&lt;code&gt;a&lt;/code&gt;、&lt;code&gt;b&lt;/code&gt;、&lt;code&gt;c&lt;/code&gt;、&lt;code&gt;d&lt;/code&gt;、&lt;code&gt;e&lt;/code&gt;、&lt;code&gt;f&lt;/code&gt; 是线性变换方程的系数。而矩阵 [[a, c, e], [b, d, f], [0, 0, 1]] 被称为二维线性变换矩阵。&lt;/p&gt;
+
+&lt;h3&gt;常用的变换。&lt;/h3&gt;
+
+&lt;h4&gt;平移&lt;/h4&gt;
+
+&lt;p&gt;考虑让 c = 0, y = 0, a = 1, d = 1。则变换方程变为：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;X&amp;#39; = X + e
+Y&amp;#39; = Y + f
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;X 坐标和 Y 坐标转换后都只是加了一个简单的常数。所以在参照坐标系中，可以看到原本的元素平移了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/translate.png&quot; alt=&quot;平移&quot;&gt;&lt;/p&gt;
+
+&lt;h4&gt;旋转&lt;/h4&gt;
+
+&lt;p&gt;设旋转的角度是 ø, 则线性变换系数是： a = cos(ø), b = sin(ø), c = -sin(ø), d = cos(ø)，e 和 f 为 0。旋转的线性变换系数可以通过余弦定理求出，有兴趣的同学可以自行证明。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/rotate.png&quot; alt=&quot;旋转&quot;&gt;&lt;/p&gt;
+
+&lt;h4&gt;缩放&lt;/h4&gt;
+
+&lt;p&gt;a 和 d 是直接控制 X 坐标和 Y 坐标缩放的，让 a 和 d 为 2，其他系数为 0，图形在两个维度上都放大为原来的 2 倍。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/scale.png&quot; alt=&quot;缩放&quot;&gt;&lt;/p&gt;
+
+&lt;h3&gt;变换列表&lt;/h3&gt;
+
+&lt;p&gt;坐标经过一次变换 &lt;em&gt;M[1]&lt;/em&gt; 之后，还可以继续经过变换 &lt;em&gt;M[2]&lt;/em&gt;、&lt;em&gt;M[3]&lt;/em&gt;、&lt;em&gt;M[4]&lt;/em&gt; ... &lt;em&gt;M[n]&lt;/em&gt;。最终变换出来的结果是这些变换矩阵的乘积：&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;CTM&lt;/em&gt; = &lt;em&gt;M[n]&lt;/em&gt; · &lt;em&gt;M[n-1]&lt;/em&gt; · ... · &lt;em&gt;M[2]&lt;/em&gt; · &lt;em&gt;M[1]&lt;/em&gt; · &lt;em&gt;M[0]&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;注意，后面的变换要乘在前面。矩阵的乘法不具有交换律。这意味着先旋转再平移和先平移再旋转是不一样的结果。看下面一个实例：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fill&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;red&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Rect&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fill&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;blue&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;paper&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addShapes&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setMatrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Matrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;translate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rotate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setMatrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Matrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rotate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;translate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;50&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;img src=&quot;/img/coordinate-and-transform/transform-seq.png&quot; alt=&quot;变换顺序&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;旋转始终围绕参照坐标系的原点进行。b 是先旋转再平移的，在旋转的时候，原点还是重合的。而 a 是先平移后旋转的，旋转的时候自身坐标的原点已经偏离了 b 的参照坐标系的原点。两个效果是有差别的。&lt;/p&gt;
+
+&lt;p&gt;变换列表在计算图形最终渲染结果的时候需要用到。计算具有层级结构的元素坐标变换需要把每个祖先的坐标变换算上。考虑一下的图形层级：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;paper
+|--g1
+|  |--g2
+|  |  |--rect
+.. .. ..
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;则 rect 在渲染到 paper 的时候，进行了以下坐标变换：&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;CTM&lt;sub&gt;rect&lt;/sub&gt;&lt;/em&gt; = &lt;em&gt;M&lt;sub&gt;g1&lt;/sub&gt;&lt;/em&gt; · &lt;em&gt;M&lt;sub&gt;g2&lt;/sub&gt;&lt;/em&gt; · &lt;em&gt;M&lt;sub&gt;rect&lt;/sub&gt;&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2&gt;在 Kity 中合理使用坐标系和线性变换&lt;/h2&gt;
+
+&lt;p&gt;在 Kity 当中，提供了强大的坐标计算和变换能力。&lt;/p&gt;
+
+&lt;h3&gt;获得相对于参照坐标系的坐标变换&lt;/h3&gt;
+
+&lt;p&gt;使用 &lt;code&gt;Shape.getTransform(refer)&lt;/code&gt; 方法获得一个元素坐标系到指定参照物的坐标变换。&lt;code&gt;refer&lt;/code&gt;  为指定的参照物，为空则使用父容器为参照物。&lt;/p&gt;
+
+&lt;h3&gt;获得在参照坐标系中的矩形区域&lt;/h3&gt;
+
+&lt;p&gt;使用 &lt;code&gt;Shape.getRenderBox(refer)&lt;/code&gt; 获得一个元素在指定的元素的坐标系中的矩形区域。&lt;code&gt;refer&lt;/code&gt; 为参照物，为空则使用父容器为参照物。&lt;/p&gt;
+
+&lt;h3&gt;设置相对于父容器的坐标变换&lt;/h3&gt;
+
+&lt;p&gt;Kity 在一个元素上允许同时设置四个坐标变换：矩阵、平移、旋转、缩放。他们默认都是 null，即和父元素的坐标系重合。四个变换的接口分别是：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setMatrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;kity&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Matrix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;c&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;e&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 矩阵&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setScale&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;       &lt;span class=&quot;c1&quot;&gt;// 缩放&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setRotate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;30&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;        &lt;span class=&quot;c1&quot;&gt;// 旋转&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;setTranslate&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;20&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 平移&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;需要注意的是，无论变换接口的调用顺序如何，Kity 都是以以下顺序变换的：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;矩阵变换&lt;/li&gt;
+&lt;li&gt;缩放&lt;/li&gt;
+&lt;li&gt;旋转&lt;/li&gt;
+&lt;li&gt;平移&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;这样是为了保证最常用的平移始终保持在参照坐标系的方向上进行。如果需要精细控制变换，可以通过设置变换矩阵来实现。&lt;/p&gt;
+</description>
+                <pubDate>Tue, 22 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/coordinate-and-transform</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/coordinate-and-transform</guid>
+            </item>
+        
+            <item>
+                <title>实时协同编辑的实现</title>
+                <description>作者：nwind &lt;br&gt; &lt;p&gt;在最近某个项目中打算使用协同编辑来解决冲突问题，因此抽空调研了现有的实现方案，结果发现要想做完美是很难的，但我们可以低成本地做到不错的效果，本文将介绍几种实现方法，大家在项目中如果有需要可以参考。&lt;/p&gt;
+
+&lt;h2&gt;什么是实时协同编辑&lt;/h2&gt;
+
+&lt;p&gt;这里所说的实时协同编辑，是指多人同时编辑一个文档，最典型的例子是 Google Docs，你可以实时看到别人做出的修改，不用手动刷新页面。&lt;/p&gt;
+
+&lt;p&gt;要实现实时编辑，我们需要解决两个技术点：实时通信问题、编辑冲突问题，其中实时通信问题比较好解决，可以使用 long pull 或 WebSocket，所以这里就不过多讨论了，重点将放在如何解决编辑冲突问题上。&lt;/p&gt;
+
+&lt;h2&gt;可选方案&lt;/h2&gt;
+
+&lt;p&gt;接下来将从易至难的顺序来介绍几种可行的方案，分别是：「编辑锁」、「GNU diff-patch」、「Myer&amp;#39;s diff-patch」、「Operational Transformation」和「分布式 Operational Transformation」。&lt;/p&gt;
+
+&lt;h3&gt;编辑锁&lt;/h3&gt;
+
+&lt;p&gt;编辑锁这是实现协同编辑最简单的方法，简单来说就是当有人在编辑某个文档时，系统会将这个文档锁定，避免其他人同时编辑，因为实现简单，所以这个方案是应用最广的，比如公司内部常用的 TWiki 系统，采用这种方式虽然可以在一定程度上避免覆盖问题，但它的使用体验不好，也做不到「实时」，所以这里就不讨论了。&lt;/p&gt;
+
+&lt;h3&gt;GNU diff-patch&lt;/h3&gt;
+
+&lt;p&gt;Git 等版本管理软件其实也是一种协同编辑工具，因为每个人都可以并行编辑，遇到编辑同一个文件时可以自动合并，因此我们也能使用类似的原理来实现协同编辑，具体可以有两种方法：diff-patch 和 merge。&lt;/p&gt;
+
+&lt;p&gt;先说 diff-patch，这里的 diff 和 patch 是指两个 unix 下的命令，diff 能输出两个文本的不同之处，然后用 patch 来更新其它文件，我们只要在 JS 中实现这两个算法，就能通过如下流程来实现协同编辑：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;每个用户进来时都建立长连接，保存好当前文档副本&lt;/li&gt;
+&lt;li&gt;有人编辑时，如果停顿 5 秒（具体要根据产品策略），就将现有文档和之前的副本进行 diff，将结果传给服务端，更新副本&lt;/li&gt;
+&lt;li&gt;服务端更新文档，然后通过长连接将这个 diff 结果发给同时在编辑的其它用户，这些用户使用 patch 方法来更新 ta 们文档&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;但 GNU diff 有个问题，因为基于行匹配的，所以很容易冲突，让我们测试一下「百度 Web」和「百度 Web 前端」这两段文本的 diff 结果&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;console language-console&quot; data-lang=&quot;console&quot;&gt;&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ diff old.txt other-new.txt &amp;gt; old-to-other-new.patch&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ cat old-to-other-new.patch&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;1c1&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;&amp;lt; 百度 Web&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;---&lt;/span&gt;
+&lt;span class=&quot;gp&quot;&gt;&amp;gt;&lt;/span&gt; 百度 Web 前端
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在这个 diff 结果中，&lt;code&gt;1c1&lt;/code&gt; 的第一个「1」代表修改前的第一行，后面的「c」代表「修改」，第二个「1」代表修改后的行，也就是说将第一行的「百度 Web」改成「百度 Web 前端」，修改后的内容放第一行。也就意味着如果两人同时修改一行就会冲突，可以通过下面的测试来确认：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;console language-console&quot; data-lang=&quot;console&quot;&gt;&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ cat my-new.txt&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;Web&lt;/span&gt;
+
+&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ patch my-new.txt &amp;lt; old-to-other-new.patch&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;patching file b-new.txt&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;Hunk #1 FAILED at 1.&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;1 out of 1 hunk FAILED -- saving rejects to file my-new.txt.rej&lt;/span&gt;
+
+&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ cat my-new.txt.rej&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;***************&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;*** 1&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;- 百度 Web--- 1 -----&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;+ 百度 Web 前端&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;其中 &lt;code&gt;my-new.txt&lt;/code&gt; 是我修改的版本，我去掉了前面的「百度 」，只留下「Web」，其实这两处修改是不冲突的，它们可以合并成「Web 前端」，如下图所示&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/realtime-collaboration/merge.png&quot; alt=&quot;merge&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;但使用 patch 命令部下，它在冲突后会生成一个新文件 &lt;code&gt;my-new.txt.rej&lt;/code&gt; 来描述失败原因，这种展现方式不直观，需要打开两个文件比对，我们使用另一种方式来更好地展现，那就是接下来介绍的 merge 命令，它的使用方法如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;console language-console&quot; data-lang=&quot;console&quot;&gt;&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ merge my-new.txt old.txt other-new.txt&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;merge: warning: conflicts during merge&lt;/span&gt;
+
+&lt;span class=&quot;go&quot;&gt;[nwind@fex ~]$ cat my-new.txt&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;&amp;lt;&amp;lt;&amp;lt;&amp;lt;&amp;lt;&amp;lt;&amp;lt; my-new.txt&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;Web=======&lt;/span&gt;
+&lt;span class=&quot;go&quot;&gt;百度 Web 前端&amp;gt;&amp;gt;&amp;gt;&amp;gt;&amp;gt;&amp;gt;&amp;gt; other-new.txt&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;可以看到它直接将冲突的地方写到 &lt;code&gt;my-new.txt&lt;/code&gt; 里了，这点比 patch 看起来要方便些，对于这个结果估计大部分同学都会眼熟，因为 merge 命令和 Git 等工具&lt;a href=&quot;https://github.com/git/git/blob/master/Documentation/git-merge.txt#L211&quot;&gt;中的合并算法是一样的&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;通过使用我们可以发现 merge 命令有个缺点，那就是需要使用 3 份完整的文本来进行比较，为了避免每次传递所有文本内容，我们可以结合使用 diff 来减小传输体积，在后端 patch 成新的文本。&lt;/p&gt;
+
+&lt;p&gt;无论是 diff 还是 merge，由于它们的算法都是基于行进行比较，导致对同一行的编辑必然冲突，为了解决这个问题，我们可以尝试基于字符粒度的 diff 算法，那就是接下来将介绍的 Myer&amp;#39;s diff-patch。&lt;/p&gt;
+
+&lt;h3&gt;Myer&amp;#39;s diff-patch&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://neil.fraser.name/software/diff_match_patch/myers.pdf&quot;&gt;Myer 算法&lt;/a&gt;是另一种 diff-patch 算法，它有很多&lt;a href=&quot;https://code.google.com/p/google-diff-match-patch/&quot;&gt;语言的开源实现&lt;/a&gt;，这里我们就不介绍细节算法了，直接用之前的例子来测试它的效果，首先看一下它的 diff 结果，调用代码如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;javascript language-javascript&quot; data-lang=&quot;javascript&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;old_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 前端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dmp&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;diff_match_patch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;patch_list&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_make&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;old_text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;new_text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;patch_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_toText&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;decodeURI&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;输出结果为&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;@@ -1,6 +1,9 @@
+ 百度 Web
++ 前端
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;其中第一行的 &lt;code&gt;-&lt;/code&gt; 和 &lt;code&gt;+&lt;/code&gt; 两个符号没有什么意义，这句话表示修改处之前的起始位置为 1（由于数组是从 0 开始的，所以内部计算时会先减一），长度为 6，后面的 &lt;code&gt;1,9&lt;/code&gt;，表示修改后的起始位置为 1，长度为 9。在接下来的两段文本代表修改的地方，注意「百度 Web」前面有空格，这代表相等，也就是直接添加这个字符串，而后面的 &lt;code&gt;+&lt;/code&gt; 代表添加文本，具体细节可以通过它的&lt;a href=&quot;https://code.google.com/p/google-diff-match-patch/source/browse/trunk/javascript/diff_match_patch_uncompressed.js#2100&quot;&gt;实现源码&lt;/a&gt;了解。&lt;/p&gt;
+
+&lt;p&gt;因此确定它的 diff 策略是基于字符匹配的，这样能否解决我们之前遇到的冲突问题呢？接下来来测试一下，源码如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;javascript language-javascript&quot; data-lang=&quot;javascript&quot;&gt;&lt;span class=&quot;c1&quot;&gt;//相关代码同上&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;patches&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_fromText&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;results&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dmp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patch_apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;patches&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Web&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;results&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//Web 前端&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这个输出结果是正确的，也就是说它能很好地解决之前的问题，但如果是同一个位置的修改会怎样？我继续做了几个实验：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;javascript language-javascript&quot; data-lang=&quot;javascript&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;old_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;other_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 后端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;my_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 前端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;//结果为「百度 Web 前端 后端」&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;===&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;old_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 前端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;other_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 后端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;my_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web 全端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;//结果为「百度 Web 后端」&lt;/span&gt;
+
+&lt;span class=&quot;o&quot;&gt;===&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;old_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;other_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Web 前端&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;my_new_text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 FE&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;//结果为「FE 前」 &lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;第一个例子是在后面添加不同的字符，它的结果是两个添加都生效，第二个例子是在同一处修改成不同的字符，它的结果是别人的修改生效，但最后一个例子出错了，丢失了「端」字，这里看起来还好，但如果内容是富文本就有问题了，比如 &lt;code&gt;&amp;lt;b&amp;gt;&lt;/code&gt; 少了 &lt;code&gt;&amp;gt;&lt;/code&gt; 是不行的。&lt;/p&gt;
+
+&lt;p&gt;整体来看 Myer 算法可以低成本地解决大部分问题，所以有些在线编辑器选择它来实现协同编辑功能，比如 &lt;a href=&quot;http://codebox.io&quot;&gt;codebox&lt;/a&gt;，它的客户端代码&lt;a href=&quot;https://github.com/FriendCode/codebox/blob/master/client/utils/filesync.js&quot;&gt;在这&lt;/a&gt;，服务端代码&lt;a href=&quot;https://github.com/FriendCode/codebox/blob/master/core/cb.files.sync/models/document.js&quot;&gt;在这&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;不过 Myer 在某些情况下会丢字符，是否还有更好的方法？答案是有，那就是接下来介绍的 Operational Transformation 技术。&lt;/p&gt;
+
+&lt;h3&gt;Operational Transformation&lt;/h3&gt;
+
+&lt;p&gt;Operational Transformation（下面简称 OT）技术正是 Google Docs 中所采用的方案，因此是经过验证的，值得研究。&lt;/p&gt;
+
+&lt;p&gt;最开始我一直觉得 OT 会很复杂，因为它的相关介绍文章都写得很长，比如&lt;a href=&quot;http://www3.ntu.edu.sg/home/czsun/projects/otfaq/&quot;&gt;这篇&lt;/a&gt;及维基百科上的&lt;a href=&quot;http://en.wikipedia.org/wiki/Operational_transformation&quot;&gt;介绍&lt;/a&gt;，不过看了之后才后发现它的原理并不复杂，我将在这里进行简单的说明。&lt;/p&gt;
+
+&lt;p&gt;首先，我们可以将文本内容修改转成以下 3 种类型的操作(Operational)：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;retain(n)：保持 n 个字符，也就是说这 n 个字符不变&lt;/li&gt;
+&lt;li&gt;insert(str)：插入字符 str&lt;/li&gt;
+&lt;li&gt;delete(str)：删除字符 str&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;举个例子，假设 A 用户将「百度 Web」变成「Web 前端」，相当于产生了如下 3 个操作：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;delete(&amp;#39;百度 &amp;#39;),  //删掉「百度 」
+retain(3),       //跳过 3 个字符（也就是「Web」）
+insert(&amp;#39; 前端&amp;#39;)   //插入「 前端」
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;提取这些操作可以通过 Levenshtein distance（编辑距离）算法来实现。那它如何解决冲突问题了？比如这时如果 B 用户将「百度 Web」改成了「百度 FE」，B 所生产的操作步骤将会是如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;retain(3),       //跳过 3 个字符（也就是「百度 」）
+delete(&amp;#39;Web&amp;#39;),
+insert(&amp;#39;FE&amp;#39;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;如果我们先应用 A 的操作，将字符串变为「Web 前端」，然后再应用 B 的操作时就会失效，因为在执行 B 的第二个操作 &lt;code&gt;delete(&amp;#39;Web&amp;#39;)&lt;/code&gt; 时并没有「Web」，这时从第四个字符开始已经变成了「 前端」。&lt;/p&gt;
+
+&lt;p&gt;因此我们需要转换 B 的操作来适应新的字符串，比如调成如下操作：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;delete(&amp;#39;Web&amp;#39;),
+insert(&amp;#39;FE&amp;#39;),
+retain(3)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;这个转换算法就是 OT 的核心，实际上 OT 指的是一类技术，而不是具体的算法，这个思路就是首先将编辑转成操作(Operational)，如果多人操作同时进行，需要对这些操作进行转换(Transformation)，这就是为什么叫 Operational Transformation，而具体应该拆分成哪些操作以及转换算法都是可以自定义的，因此 OT 可以灵活地支持各种协同编辑应用，比如非文本类的编辑。&lt;/p&gt;
+
+&lt;p&gt;回到之前 Myer 算法导致丢字符的那个例子，我们看看 OT 是否能解决，这里我使用了一个开源库 &lt;a href=&quot;https://github.com/marcelklehr/changesets&quot;&gt;changesets&lt;/a&gt;，以下是基于它实现合并的例子：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;javascript language-javascript&quot; data-lang=&quot;javascript&quot;&gt;&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Changeset&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;changesets&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Changeset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;text&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 Web&amp;quot;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;textA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;Web 前端&amp;quot;&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;textB&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;百度 FE&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;csA&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Changeset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fromDiff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;textA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;csB&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Changeset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;fromDiff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;textB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;csB_new&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;csB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;transformAgainst&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;csA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//这里这就是操作转换&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;textA_new&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;csA&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;csB_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;apply&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;textA_new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//结果是「 前端FE」&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;结果并不正确，正确的应该是「FE 前端」，查看一下 &lt;code&gt;csB_new&lt;/code&gt; 的内容，发现它实际上是转换成了如下操作：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;delete(3),   //注意 changesets 在这里的参数不是字符串而是数字，它会直接删掉 3 个字符，不够内容是什么
+retain(3),
+insert(&amp;#39;FE&amp;#39;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;需要注意这并不是 OT 技术本身的问题，而是 changesets 所实现的转换算法问题，虽然不够完美，但和之前的 Myer 算法相比，至少没丢字符，后来我又做了几个测试，发现 OT 技术的准确率比 Myer 高，因此它是最适合用于协同编辑的技术。&lt;/p&gt;
+
+&lt;h3&gt;分布式 Operational Transformation&lt;/h3&gt;
+
+&lt;p&gt;如果看完上面的文章你觉得实现实时协同编辑似乎不难，那你就错了，因为我们之前都没有考虑分布式的问题，OT 技术在学术界都研究 20 多年了，至今也没人总结出一个最好的方法，前 Google Wave 工程师在 &lt;a href=&quot;http://sharejs.org/&quot;&gt;ShareJS&lt;/a&gt; 首页上这样写道：&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;Unfortunately, implementing OT sucks. There&amp;#39;s a million algorithms with different tradeoffs, mostly trapped in academic papers. The algorithms are really hard and time consuming to implement correctly.
+I am an ex Google Wave engineer. Wave took 2 years to write and if we rewrote it today, it would take almost as long to write a second time.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;所以其实要做好是很难的，这里面最麻烦的就是分布式导致的问题，接下来将介绍 3 个我能想到的问题及解决方法。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1. 顺序问题&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;首先第一个问题是顺序问题，因为 OT 等算法都是依赖顺序的，不同顺序会导致结果不同，我们通过下面这张图来说明：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/realtime-collaboration/order-problem.png&quot; alt=&quot;order-problem&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;假设 &lt;code&gt;Client A&lt;/code&gt; 在做两次修改时发了两个异步请求，可能因为网络延迟导致第二个请求反而先到了，导致最终服务器版本和 &lt;code&gt;Client A&lt;/code&gt; 所看到的不一致，同样在服务器发往其它客户端的请求时也会出现乱序的问题，如图中 &lt;code&gt;Client B&lt;/code&gt; 也有问题。&lt;/p&gt;
+
+&lt;p&gt;这个问题的解决方法很简单，我们可以在客户端和服务器端都加上队列来保证请求顺序，等前一个请求结束后再发下一个请求。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2. 存储的原子操作&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;如果有多台服务器，或者有多个线程/进程在同时处理请求时就会遇到覆盖问题，因为读写数据库并不是原子操作，比如下面的例子：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/realtime-collaboration/data-atomic.png&quot; alt=&quot;data-atomic&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;Web Server A&lt;/code&gt; 和 &lt;code&gt;Web Server B&lt;/code&gt; 同时访问数据库，结果导致 &lt;code&gt;Web Server A&lt;/code&gt; 的修改被覆盖了。&lt;/p&gt;
+
+&lt;p&gt;好在这种问题还算比较常见，解决办法可以有 3 种：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;保证操作只在一个线程中执行，比如某个文档的更新只在某个固定的机器，使用 Node 这样的单线程模型提供服务，这样就不可能并行修改了&lt;/li&gt;
+&lt;li&gt;如果数据库支持事务(transaction)，可以通过事务来解决&lt;/li&gt;
+&lt;li&gt;如果数据库不支持事务，就只能用分布式锁了，如 ZooKeeper&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;从实现角度来看，第一和第二种方法都比较简单，而第三种方法会带来很多问题，比如可能导致文档被锁死，假如上锁后由于种种原因没有执行解锁操作，这个文档就会永远被锁住，所以还得加上超时限制等策略。&lt;/p&gt;
+
+&lt;p&gt;然而在解决了原子操作后，我们将发现一个新的问题，那就是版本管理问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;3. 版本管理问题&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;在前面的例子中，两段新文本的修改都是基于同一个旧版本的，如果旧版本不一样，就有可能出错，具体可以通过下面这张图来解释：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/realtime-collaboration/version-problem.png&quot; alt=&quot;version-problem&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;在这个例子中，Web Server A 接收到操作命令是将「a」文本改成「aa」，Web Server B 接收到操作命令是将「a」文本改成「ab」，这里我们加上了锁机制来避免同时读写数据，Web Server A 首先得到了锁，然后修改并更新数据，而 Web Server B 需要先等待数据解锁，等 Web Server B 拿到数据后它已经从「a」变成了「aa」，如果还按照 &lt;code&gt;retain(1), insert(&amp;#39;b&amp;#39;)&lt;/code&gt; 进行修改，数据将变成「ab」，而不是正确的「aab」，引起这个问题的原因就是旧版本不一致，Web Server B 需要根据 Web Server A 的操作进行操作转换，变成 &lt;code&gt;retain(2), insert(&amp;#39;b&amp;#39;)&lt;/code&gt;，然后才能对数据进行修改。&lt;/p&gt;
+
+&lt;p&gt;因此想要解决这个问题，就必须引入版本，每次修改后都需要存储下新版本，有了版本我们就能使用 diff 功能来计算不同版本的差异，得到其它人修改的内容，然后通过 OT 合并算法合并两个操作，如下所示：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/realtime-collaboration/version-solution.png&quot; alt=&quot;version-problem&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;在 &lt;code&gt;Web Server A&lt;/code&gt; 操作前数据版本是 &lt;code&gt;v=1&lt;/code&gt;，操作后变成了 &lt;code&gt;v=2&lt;/code&gt;，等到 &lt;code&gt;Web Server B&lt;/code&gt; 处理的时候，它通过版本比较发现不一致，所以就首先通过编辑距离算法算出 &lt;code&gt;Web Server A&lt;/code&gt; 所做的操作，然后用这个操作来对自己的操作进行转换，得到正确的新操作，从而避免了覆盖问题。&lt;/p&gt;
+
+&lt;p&gt;如果保存所有版本会导致数据量大大增加，所以还需要再优化，比如每个服务器保存一个数据副本，但这里就不再展开了，可以看要支持分布式 还是挺麻烦的，不过目前出现了一些前后端整合的方案，如 &lt;a href=&quot;http://sharejs.org/&quot;&gt;ShareJS&lt;/a&gt; 和 &lt;a href=&quot;https://github.com/opencoweb/coweb&quot;&gt;OpenCoweb Framework&lt;/a&gt;，可以参考。&lt;/p&gt;
+
+&lt;p&gt;另外之前提到的 Myer&amp;#39;s diff 算法也有分布式解决方案，具体细节可以参考&lt;a href=&quot;https://neil.fraser.name/writing/sync/&quot;&gt;这篇文档&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h2&gt;初步结论&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果你只是一个内部小项目，实时性要求不高，但对准确性要求比较高
+
+&lt;ul&gt;
+&lt;li&gt;推荐用 merge 或 diff3 工具，出现同一行冲突时由用户来解决，这样能避免自动合并有可能出错的问题&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;如果想具备一定的实时性，流量不大，不想实现太复杂，且对少量的冲突可以忍受
+
+&lt;ul&gt;
+&lt;li&gt;推荐用 Myer&amp;#39;s diff，后端只开一个 Node 进程&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;如果想具备实时性，且有多台后端服务同时处理
+
+&lt;ul&gt;
+&lt;li&gt;可以用 Operational Transformation 或 Myer&amp;#39;s diff，但需要注意分布式带来的问题&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;如果需要很精细的控制，如支持富文本编辑等非单纯文本格式
+
+&lt;ul&gt;
+&lt;li&gt;只能使用 Operational Transformation，但要自己实现操作合并算法，比如 XML 可以参考&lt;a href=&quot;http://www.codecommit.com/blog/java/understanding-and-applying-operational-transformation&quot;&gt;这篇文章&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;后续&lt;/h2&gt;
+
+&lt;p&gt;除了文本合并，真正要做在线编辑还有很多细节处理，感兴趣的同学可以继续研究：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;支持选区，看到其他人选择的文本段，当然，这也有合并问题&lt;/li&gt;
+&lt;li&gt;指针要更随文本变化移动到正确的位置&lt;/li&gt;
+&lt;li&gt;支持 undo&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <pubDate>Mon, 21 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/realtime-collaboration</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/realtime-collaboration</guid>
+            </item>
+        
+            <item>
+                <title>FEX官网诞生记 + 完整PSD下载</title>
+                <description>作者：Rayi &lt;br&gt; &lt;h2&gt;这又是拖延症爆发的结果&lt;/h2&gt;
+
+&lt;p&gt;本来早就说在网站上线后就写一篇这样的文章的，结果拖延症犯了，一直到现在还没写好。&lt;/p&gt;
+
+&lt;p&gt;最近实在是觉得无颜再拖，所以赶紧写出来给大家随便瞅瞅。 &lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;请勿拍砖，拍砖请自带砖头！&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;且先说说这个网站&lt;/h2&gt;
+
+&lt;p&gt;网站也就是目前百度FEX团队的官网了，之前接到任务后，花了一些时间做了设计图，然后就开始开工去做静态页面了。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/about-this-site/site.png&quot; alt=&quot;网站设计稿&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;不过因为要用&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;来搭建，所以又去了解了一下&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;的相关信息。至于为什么选择了&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;，且听我慢慢道来。&lt;/p&gt;
+
+&lt;p&gt;目前FEX的官网使用的是&lt;a href=&quot;http://pages.github.com/&quot;&gt;Github Pages&lt;/a&gt;的服务，你可以到 &lt;a href=&quot;http://pages.github.com/&quot;&gt;这里&lt;/a&gt; 来查了解关于更多&lt;a href=&quot;http://pages.github.com/&quot;&gt;Github Pages&lt;/a&gt;的信息。&lt;/p&gt;
+
+&lt;p&gt;网站的设计图也放出来给大家了，如果对网站有兴趣的，可以到我们的&lt;a href=&quot;http://github.com/fex-team/fex-team.github.io/&quot;&gt;网站代码github&lt;/a&gt;上去&lt;a href=&quot;http://github.com/fex-team/fex-team.github.io/&quot;&gt;fork&lt;/a&gt;一份代码，整个网站都是开源的。&lt;/p&gt;
+
+&lt;p&gt;如果你有对代码做了什么修正，也欢迎 pull request 提交代码给我们！&lt;/p&gt;
+
+&lt;h2&gt;为什么用 Jekyll&lt;/h2&gt;
+
+&lt;p&gt;首先 &lt;a href=&quot;http://pages.github.com/&quot;&gt;Github Pages&lt;/a&gt;的服务本身是不能运行类似php这样的动态语言的，因此一般大家都常用的方法是写静态页面。&lt;/p&gt;
+
+&lt;p&gt;那么可选的方案一般就是：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;自己写静态页面，每次写了之后更新。&lt;/li&gt;
+&lt;li&gt;通过一些工具来实现静态页面创建。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;但同时，我们还有一些其他需求：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;文章能用&lt;a href=&quot;http://daringfireball.net/projects/markdown/&quot;&gt;markdown&lt;/a&gt;格式来写，不涉及展现的html代码。&lt;/li&gt;
+&lt;li&gt;整个网站放在&lt;a href=&quot;https://github.com/&quot;&gt;github&lt;/a&gt;上。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;于是结合起来方案就是利用工具来维护，生成静态页面，然后更新到&lt;a href=&quot;https://github.com/&quot;&gt;github&lt;/a&gt;上。但是这种方案的问题是，每次提交前必须要生成静态页面，而这个动作不太好做成自动进行的（因为我们的文章作者有很多，不一定大家都想的起来做这个动作）。
+那自然，我们想去了解是否能提交后生成静态页面呢？？&lt;/p&gt;
+
+&lt;p&gt;我们看到&lt;a href=&quot;http://pages.github.com/&quot;&gt;Github Pages&lt;/a&gt;支持了&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;，意味着当你将&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;的项目代码提交后，会自动给你生成相应的静态页面。于是我们的问题愉快的被解决了。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;这里插播一下，除了&lt;a href=&quot;http://jekyllrb.com/&quot;&gt;Jekyll&lt;/a&gt;之外，其实还有一些其他工具方案来生成页面的，大家不妨看以下 Rank 写的这篇 &lt;a href=&quot;http://rank.im/2014/03/10/hexo-for-blog/&quot;&gt;《用 hexo 在 github page 搭建博客》&lt;/a&gt;，里面有提到其他的工具方案。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;其他杂七杂八的&lt;/h2&gt;
+
+&lt;p&gt;个性化域名设置，去看&lt;a href=&quot;https://github.com/&quot;&gt;github&lt;/a&gt;的文档就行，或者直接穿越去看看: &lt;a href=&quot;https://help.github.com/articles/setting-up-a-custom-domain-with-pages&quot;&gt;https://help.github.com/articles/setting-up-a-custom-domain-with-pages&lt;/a&gt; 。&lt;/p&gt;
+
+&lt;p&gt;评论系统本来之前用的 &lt;a href=&quot;http://disqus.com/&quot;&gt;Disqus&lt;/a&gt;,但是因为毕竟是国外服务，加载速度上有点慢，所以最后改成了&lt;a href=&quot;http://duoshuo.com&quot;&gt;多说&lt;/a&gt;，速度快多了，而且可以微博登录哦。&lt;/p&gt;
+
+&lt;p&gt;其他好像没什么想介绍的了，如果有对其他信息感兴趣的，欢迎留言评论！&lt;/p&gt;
+
+&lt;p&gt;对了！我在文章列表那里参考了&lt;a href=&quot;http://ued.taobao.org/blog/&quot;&gt;淘宝UED&lt;/a&gt;的文章块样式，这个得写出来，不然就是刺果果的抄袭而且不承认了！&lt;/p&gt;
+
+&lt;h2&gt;福利包&lt;/h2&gt;
+
+&lt;p&gt;如之前所说，我把网站设计稿和一些Banner图片的设计稿都扔出来了。&lt;/p&gt;
+
+&lt;p&gt;如果，我是说如果你对我们的官网设计感兴趣，那么，你可以移步到 &lt;a href=&quot;http://pan.baidu.com/s/1qWFaF5i&quot;&gt;下载PSD文件&lt;/a&gt;来下载相应的PSD文件。其中包括首页和文章页的设计稿。&lt;/p&gt;
+
+&lt;p&gt;也欢迎看看我之前写的其他文章： &lt;a href=&quot;/blog/2014/04/fex-w3ctech-happyend/&quot;&gt;《妹纸+基友技术交流会，有图有真相哦！》&lt;/a&gt; &lt;/p&gt;
+</description>
+                <pubDate>Wed, 16 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/about-this-site</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/about-this-site</guid>
+            </item>
+        
+            <item>
+                <title>如何高效地管理网站静态资源</title>
+                <description>作者：walter &lt;br&gt; &lt;h2&gt;背景&lt;/h2&gt;
+
+&lt;p&gt;随着互联网开发和迭代速度越来越快，网站也变得越来越庞大，存在大量静态资源，我们原有管理静态资源的方式变得越来越不适用，就如同封面图一样，静态资源之间的关系错综复杂，给工程师带来了很多麻烦：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;人工管理依赖的噩梦，工程师需要频繁管理和维护每个页面需要的 JS &amp;amp; CSS 文件，包括静态资源之间的依赖关系以及加载顺序等。&lt;/li&gt;
+&lt;li&gt;性能优化成本高且不可持续性，为了提高网站性能，工程师总是在忙于优化页面静态资源的加载，包括动态加载静态资源、按需加载静态资源和修改静态资源合并策略等，但是过了一段时间性能又降下来了，又需要周而复始的重复。&lt;/li&gt;
+&lt;li&gt;静态资源差异化的挑战，PC和无线的适配，不同的网络和终端需要适配相应的静态资源；当网站需要支持国际化的时候，需要对不同的国家进行差异化处理，返回不同的静态资源，这些需求对原有的静态资源管理方式提出巨大挑战。&lt;/li&gt;
+&lt;li&gt;缺少快速迭代和试验新功能的有效支持，从开发到上线流程繁琐，导致项目迭代周期长&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;每天工程师都会提交大量的 new feature/bug fixes，每次项目发布和迭代都面临着以上的问题，是否可以有一套系统帮助我们管理/调度静态资源来减少人工管理静态资源成本和风险，来达到更快、更可靠、低成本的自动化项目交付。在实际项目开发中，我们进行了大量探索和试验，实现了一套 “静态资源管理系统”，对静态资源进行全流程的管理和调度：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;帮助工程师管理静态资源间的依赖以及资源的加载&lt;/li&gt;
+&lt;li&gt;管理静态资源版本更新与缓存，自动处理CDN&lt;/li&gt;
+&lt;li&gt;自动生成最优的静态资源合并策略，实现网站自适应优化&lt;/li&gt;
+&lt;li&gt;实现静态资源的分级发布，快速迭代，轻松回滚&lt;/li&gt;
+&lt;li&gt;根据国际化和终端的差异，送达不同的资源给不同的用户&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;下面本文将会介绍我们是如何通过静态资源系统来高效管理静态资源的。&lt;/p&gt;
+
+&lt;h2&gt;架构&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fis-static-resource-management/arc.png&quot; alt=&quot;arc&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;静态资源管理系统主要包含Compile、Sourcemap、Backend-Framework、Frontend-Loader几个核心模块：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Compile，对静态资源进行编译处理，包括对静态资源进行预处理，url 处理(添加md5戳、添加CDN前缀)，优化(压缩、合并)，生成 Sourcemap 等&lt;/li&gt;
+&lt;li&gt;Sourcemap，在 compile 阶段系统会扫描静态资源，建立一张静态资源关系表，记录每个静态资源的部署路径以及依赖关系等信息&lt;/li&gt;
+&lt;li&gt;Backend-Framework，后端运行时根据组件使用情况来调度静态资源，为前端返回页面渲染需要的资源。&lt;/li&gt;
+&lt;li&gt;Frontend-Loader，前端运行时根据用户的交互行为动态请求静态资源。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;静态资源管理系统通过自动化工具对静态资源进行预处理并产出 Sourcemap，SourceMap 中记录着静态资源的调度信息，这样框架在运行时会根据 SourceMap 中提供的调度信息自动为用户进行静态资源调度，不仅可以做到送达不同资源给不同用户，还可以自适应优化静态资源合并和加载。&lt;/p&gt;
+
+&lt;h2&gt;自动管理静态资源依赖&lt;/h2&gt;
+
+&lt;p&gt;静态资源管理系统为工程师提供了声明依赖关系的语法和规则，在 compile 阶段系统会扫描静态资源，建立一张静态资源关系表，记录每个静态资源的部署路径以及依赖关系等信息。&lt;/p&gt;
+
+&lt;h3&gt;在html中声明依赖&lt;/h3&gt;
+
+&lt;p&gt;在项目的 index.html 里使用注释声明依赖关系：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!--&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;    @require demo.js&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;    @require &amp;quot;demo.css&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;--&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在 SourceMap 中则可看到：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;json language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;res&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/css/demo_7defa41.css&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;css&amp;quot;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/js/demo_33c5143.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;index.html&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/index.html&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;html&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3&gt;在js中声明依赖&lt;/h3&gt;
+
+&lt;p&gt;支持识别 js 文件中的 require 函数，或者 注释中的 @require 字段 标记的依赖关系，这些分析处理对 html 的 script 标签内容 同样有效。&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;c1&quot;&gt;//demo.js&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt;/**&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; * @require demo.css&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; * @require list.js&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; */&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;jquery&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在SourceMap中则可看到：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;json language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;res&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;err&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/js/demo_33c5143.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;list.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;jquery&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;err&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3&gt;在css中声明依赖&lt;/h3&gt;
+
+&lt;p&gt;支持识别 css 文件 注释中的 @require 字段 标记的依赖关系，这些分析处理对 html 的 style 标签内容 同样有效。&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;c1&quot;&gt;//demo.js&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt;/**&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; * @require demo.css&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; * @require list.js&lt;/span&gt;
+&lt;span class=&quot;cm&quot;&gt; */&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;jquery&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在SourceMap中则可看到：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;json language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;res&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;err&quot;&gt;...&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/js/demo_33c5143.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;list.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;jquery&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;err&quot;&gt;...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;按需加载静态资源&lt;/h2&gt;
+
+&lt;p&gt;在静态资源管理系统接管了项目中的静态资源后，可以知道静态资源的运行情况以及依赖关系，然后可以做到自动为页面按需加载静态资源，下面通过一个例子来详细讲解：&lt;/p&gt;
+
+&lt;p&gt;sidebar.tpl 中的内容如下，&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;c&quot;&gt;&amp;lt;!--&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;    @require &amp;quot;common:ui/dialog/dialog.css&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;c&quot;&gt;--&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;a&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;btn-navbar&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;btn-navbar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/a&amp;gt;&lt;/span&gt;
+
+{script}
+    var sidebar = require(&amp;quot;common:ui/dialog/dialog.js&amp;quot;);
+    sidebar.run();
+{/script}
+
+{script}
+    $(&amp;#39;a.btn-navbar&amp;#39;).click(function() {
+        require.async(&amp;#39;common:ui/dialog/dialog.async.js&amp;#39;, function( dialog ) {
+            dialog.run();
+        });
+    });
+{/script}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;对项目编译后，自动化工具会分析依赖关系，并生成 sourcemap，如下&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;json language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;common:widget/sidebar/sidebar.tpl&amp;quot;&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;common/widget/sidebsr/sidebar.tpl&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;tpl&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;extras&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;async&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+            &lt;span class=&quot;s2&quot;&gt;&amp;quot;common:ui/dialog/dialog.async.js&amp;quot;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+        &lt;span class=&quot;s2&quot;&gt;&amp;quot;common:ui/dialog/dialog.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+        &lt;span class=&quot;s2&quot;&gt;&amp;quot;common:ui/dialog/dialog.css&amp;quot;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;在 sidebar 模块被调用后，静态资源管理系统通过查询 sourcemap 可以得知，当前 sidebar 模块同步依赖 sidebar.js、sidebar.css，异步依赖 sdebar.async.js，在要输出的 html 前面，生成静态资源外链，我们得到最终的 html&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;link&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;rel=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;stylesheet&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;href=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/static/ui/dialog/dialog_7defa41.css&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;a&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;id=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;btn-navbar&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;btn-navbar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;icon-bar&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/a&amp;gt;&lt;/span&gt;
+
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/static/common/ui/dialog/dialog$12cd4.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;resourceMap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;
+        &lt;span class=&quot;s2&quot;&gt;&amp;quot;res&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;s2&quot;&gt;&amp;quot;common:ui/dialog/dialog.async.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;s2&quot;&gt;&amp;quot;url&amp;quot;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/satic/common/ui/dialog/dialog.async_449e169.js&amp;quot;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;sidebar&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&amp;quot;common:ui/dialog/dialog.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;sidebar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+
+    &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;a.btn-navbar&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;click&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;async&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;common:ui/dialog/dialog.async.js&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;dialog&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;dialog&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;span class=&quot;nt&quot;&gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;如上可见，后端模块化框架将同步模块的 script url 统一生成到页面底部，将 css url 统一生成在 head 中，对于异步模块(require.async)注册 resourceMap 代码，框架会通过 {script} 标签收集到页面所有 script，统一管理并按顺序输出 script 到相应位置。&lt;/p&gt;
+
+&lt;p&gt;当我们想对模块进行打包，只需要使用一个 pack 配置项，对网站的静态资源进行打包，这样在 SourceMap 中，所有被打包的资源会有一个 pkg 属性指向该表中的资源，而这个资源，正是我们配置的打包策略。这样静态资源系统可以根据对应信息找到某个资源最终被合并后的 package 的 url，最后把这个 url 返回给页面。&lt;/p&gt;
+
+&lt;h2&gt;自动合并静态资源&lt;/h2&gt;
+
+&lt;p&gt;静态资源管理系统可以根据产品线上静态资源使用的数据，自动完成静态资源合并工作，对工程师完全透明，解决手工维护的未及时排除废弃资源、不可持续、成本大等问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fis-static-resource-management/autopackage.png&quot; alt=&quot;arc&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;详情请见 &lt;a href=&quot;https://speakerdeck.com/baidufe/jing-tai-zi-yuan-zi-dong-he-bing-xi-tong&quot;&gt;静态资源自动合并&lt;/a&gt;;&lt;/p&gt;
+
+&lt;h2&gt;静态资源版本更新与缓存&lt;/h2&gt;
+
+&lt;p&gt;静态资源管理系统采用基于文件内容的 hash 值来控制静态资源的版本更新，如下所示：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;html language-html&quot; data-lang=&quot;html&quot;&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;script &lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;text/javascript&amp;quot;&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;src=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;a_8244e91.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&amp;lt;/script&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;其中”_82244e91 ”这串字符是根据 a.js 的文件内容进行 hash 运算得到的，只有文件内容发生变化了才会有更改。这样做的好处有：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;线上的 a.js 不是同名文件覆盖，而是文件名 +hash 的冗余，所以可以先上线静态资源，再上线 html 页面，不存在间隙问题；&lt;/li&gt;
+&lt;li&gt;遇到问题回滚版本的时候，无需回滚 a.js，只须回滚页面即可；&lt;/li&gt;
+&lt;li&gt;由于静态资源版本号是文件内容的 hash，因此所有静态资源可以开启永久强缓存，只有更新了内容的文件才会缓存失效，缓存利用率大增；&lt;/li&gt;
+&lt;li&gt;修改静态资源后会在线上产生新的文件，一个文件对应一个版本，因此不会受到构造 CDN 缓存形式的攻击&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;静态资源管理系统会在 compile 阶段识别文件中的定位标记(url)，计算对应文件的 hash，并自动替换为 &amp;#39;文件名 + hash&amp;#39;，无需工程师手动修改。&lt;/p&gt;
+
+&lt;h2&gt;静态资源分级控制&lt;/h2&gt;
+
+&lt;p&gt;静态资源管理系统可以对静态资源做进一步控制(Controlling Access to Features)以达到分级发布的效果，主要包括以下两块核心功能,&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;feature flags, 用来控制 feature 对应的静态资源是否加载&lt;/li&gt;
+&lt;li&gt;feature flippers, 可以灵活控制 feature，不仅仅是 on 或 off, 可以做到类似&amp;#39;3%用户可以访问此功能&amp;#39;、&amp;#39;对内部所有员工开放&amp;#39; 类似的效果&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;通过以上的控制我们可以轻松做到发布一个新功能，让这个功能只对部分用户可访问，当功能完善后对所有用户开放，如果功能出现问题直接一键回滚即可。&lt;/p&gt;
+
+&lt;p&gt;在项目中的类似代码如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;{if $config.some eq &amp;#39;Fred&amp;#39;}
+    do something new and amazing here.
+{elseif $config.some eq &amp;#39;Wilma&amp;#39;}
+    do the current boring stuff.
+{else}
+    whatever you are.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;静态资源管理系统会根据配置在运行时对 $config.some 进行干预.实现对静态资源的访问权控制，通过运行时的配置(feature flag)来控制静态资源，还可以支持“主干开发”的方式，来达到更快的迭代速度。&lt;/p&gt;
+
+&lt;p&gt;我们还可以实现国际化的需求，原理同分级发布，在运行时的做一些更细致的差异化处理&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;{if $lang == &amp;#39;zh-CN&amp;#39;}
+    zh-CN
+{/if}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;总结&lt;/h2&gt;
+
+&lt;p&gt;静态资源管理系统的核心是对静态资源进行调度，可以很灵活的适应各种性能优化和差异化处理的场景，来达到更快、更可靠、低成本的自动化项目交付。但是同时这个系统十分复杂，承载着各种职责，这个系统本身会成为整个网站的关键节点和瓶颈。&lt;/p&gt;
+</description>
+                <pubDate>Fri, 11 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/fis-static-resource-management</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/fis-static-resource-management</guid>
+            </item>
+        
+            <item>
+                <title>妹纸+基友技术交流会，有图有真相哦！</title>
+                <description>作者：Rayi &lt;br&gt; &lt;h2&gt;关于活动&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;/blog/2014/03/fex-w3ctech-2014&quot;&gt;2014年第一期“w3ctech走进名企”FEX专场交流活动&lt;/a&gt;已经结束了，这次活动得到了大家的广泛参与，再次对远来的同学们表示感谢。&lt;/p&gt;
+
+&lt;p&gt;活动相关的&lt;a href=&quot;http://www.w3ctech.com/2014/baidufex.html&quot;&gt;全部视频&lt;/a&gt;已经出来了，没有能到现场的同学也可以通过视频来了解，同时，结合 &lt;a href=&quot;https://speakerdeck.com/baidufe&quot;&gt;ppt&lt;/a&gt; 来看效果更佳哦！&lt;/p&gt;
+
+&lt;p&gt;同时也通过 w3ctech 的辛苦工作，目前第一期的全部内容都有了一个&lt;a href=&quot;http://www.w3ctech.com/2014/baidufex.html&quot;&gt;汇总页&lt;/a&gt;，你可以&lt;a href=&quot;http://www.w3ctech.com/2014/baidufex.html&quot;&gt;点击查看&lt;/a&gt;。这里面包含了视频，ppt以及活动的介绍内容。&lt;/p&gt;
+
+&lt;p&gt;如果你对 FEX 做的事情感兴趣，也欢迎查看我们的&lt;a href=&quot;http://fex.baidu.com/we-need-you/&quot;&gt;招聘介绍&lt;/a&gt;，可以看到我们的招聘流程和&lt;a href=&quot;https://github.com/fex-team/interview-questions&quot;&gt;面试相关的内容&lt;/a&gt;哦。&lt;/p&gt;
+
+&lt;p&gt;最后，祝愿 “w3ctech走进名企” 活动能办的越来越好，也希望大家能听到更多有意思有帮助的内容！&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fex-w3ctech-happyend/img01.jpg&quot; alt=&quot;会议室人好多&quot;&gt;
+&lt;p style=&quot;text-align:center&quot;&gt;大家都很认真听！&lt;/p&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fex-w3ctech-happyend/img05.jpg&quot; alt=&quot;会议室人好多&quot;&gt;
+&lt;p style=&quot;text-align:center&quot;&gt;没座位了，地上也可以坐下，还有认真做笔记的,么么哒！&lt;/p&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fex-w3ctech-happyend/img04.jpg&quot; alt=&quot;会议室人好多&quot;&gt;
+&lt;p style=&quot;text-align:center&quot;&gt;后面也好多站着的同学！&lt;/p&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fex-w3ctech-happyend/img02.jpg&quot; alt=&quot;全体合影&quot;&gt;
+&lt;p style=&quot;text-align:center&quot;&gt;传说中的高清合影！&lt;/p&gt;&lt;/p&gt;
+
+&lt;h2&gt;活动主题及相关资料：&lt;/h2&gt;
+
+&lt;h3&gt;低网速高延迟网络下的静态资源管理和优化 - 王程&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://speakerdeck.com/baidufe/jing-tai-zi-yuan-zi-dong-he-bing-xi-tong&quot;&gt;ppt观看&lt;/a&gt; &lt;a href=&quot;http://v.youku.com/v_show/id_XNjk2NDMwNTMy.html&quot;&gt;视频观看&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;通常我们会将网站的静态资源打包合并，减少网页的请求数。但随着网页静态资源关系越来越复杂，版本迭代越来越快速，人工几乎无法控制资源合并策略。可能会将没有关系的资源合并到一起，相互依赖的资源合并到了不同包里，本意是减少请求数可实际效果确实增加了请求数和资源下载量，即浪费的大量人力，还影响了网页的性能。本主题主要为大家分享我们是如何通过自动化的方案解决静态资源的管理和合并的。&lt;/p&gt;
+
+&lt;h3&gt;基于 HTML5 技术的文件上传组件 - 廖学芝&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://speakerdeck.com/baidufe/ji-yu-html5ji-zhu-de-wen-jian-shang-chuan&quot;&gt;ppt观看&lt;/a&gt; &lt;a href=&quot;http://v.youku.com/v_show/id_XNjk2NDI5NTA4.html&quot;&gt;视频观看&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;WebUploader 是个以 HTML5 为主、FLASH 为辅的文件上传组件。在充分发挥HTML5的优势，同时又兼容IE浏览器。本次分享将介绍 WebUploader 是如何利用文件的分片并发上传功能来提高上传效率，以及如何支持秒传和断点续传等扩展功能。&lt;/p&gt;
+
+&lt;h3&gt;百度前端基础数据平台介绍 - 张军、张涛&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://speakerdeck.com/baidufe/bai-du-qian-duan-ji-chu-shu-ju-ping-tai-jie-shao&quot;&gt;ppt观看&lt;/a&gt; &lt;a href=&quot;http://v.youku.com/v_show/id_XNjk2NDYyNDI0.html&quot;&gt;视频观看&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;大数据时代，前端作为重要的数据源，可以为产品和技术决策提供重要依据。该平台收集大量线上用户的真实数据，帮助产品线了解用户的终端环境、页面来源、访问习惯、访问耗时等基础信息，还可以统计用户的有效点击数、人均点击数、点击时间分布等用户行为数据，并且我们还监控了用户前端异常信息，帮助开发人员定位bug、修改bug。&lt;/p&gt;
+
+&lt;h3&gt;Web富应用的设计与开发 - 潘征&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://speakerdeck.com/baidufe/webfu-ying-yong-de-she-ji-yu-kai-fa&quot;&gt;ppt观看&lt;/a&gt; &lt;a href=&quot;http://v.youku.com/v_show/id_XNjk2NDg2MzI0.html&quot;&gt;视频观看&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在计算机运算能力和网络传输速度都更上一层楼的今天，Web富应用逐渐脱离“小打小闹”的形象，越来越多地成为成为日常办公的常用工具和复杂视觉展示的载体；而Web富应用的设计，也逐渐从传统的“写页面”模式，转为更加精巧、庞大的模块化设计。分享将从画一个圆开始，由浅入深地阐述一个Web富应用的设计和构建过程。&lt;/p&gt;
+</description>
+                <pubDate>Fri, 11 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/fex-w3ctech-happyend</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/fex-w3ctech-happyend</guid>
+            </item>
+        
+            <item>
+                <title>流量劫持能有多大危害？</title>
+                <description>作者：zjcqoo &lt;br&gt; &lt;p&gt;&lt;a href=&quot;http://fex.baidu.com/blog/2014/04/traffic-hijack/&quot;&gt;上一篇文章&lt;/a&gt;，介绍了常见的流量劫持途径。然而无论用何种方式获得流量，只有加以利用才能发挥作用。&lt;/p&gt;
+
+&lt;p&gt;不同的劫持方式，获得的流量也有所差异。DNS 劫持，只能截获通过域名发起的流量，直接使用 IP 地址的通信则不受影响；CDN 入侵，只有浏览网页或下载时才有风险，其他场合则毫无问题；而网关被劫持，用户所有流量都难逃魔掌。&lt;/p&gt;
+
+&lt;p&gt;在本文中，我们通过技术原理，讲解如下问题：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;为什么喜欢劫持网页？&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;只浏览不登陆就没事吗？&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;自动填写表单有风险吗？&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;离开劫持环境还受影响吗？&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;使用 HTTPS 能否避免劫持？&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;流量劫持能否控制我电脑？&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;为什么喜欢劫持网页？&lt;/h2&gt;
+
+&lt;p&gt;理论上说，劫持到用户的流量数据，也就获得相应程序的网络通信。但在现实中，数据并不代表真实内容。一些重要的网络程序，都是私有的二进制协议，以及各种加密方式。想通过流量来还原出用户的聊天信息、支付密码，几乎是不可能的。即使花费各种手段，破解出某个程序的通信协议，然而一旦程序升级改变了协议格式，或许就前功尽弃了。因此，很难找到种一劳永逸的客户端劫持方案。&lt;/p&gt;
+
+&lt;p&gt;然而，并非所有程序都是客户端的。一种新兴的应用模式 —— WebApp，发展是如此之快，以至于超越客户端之势。在如今这个讲究跨平台、体验好，并有云端支持的年代，WebApp 越来越火热。各种应用纷纷移植成网页版，一些甚至替代了客户端。同时，也造就了流量劫持前所未有的势头。&lt;/p&gt;
+
+&lt;p&gt;WebApp，其本质仍是普通的网页而已。尽管网页技术在近些年里有了很大的发展，各种新功能一再增加，但其底层协议始终没有太大的改进 —— HTTP，一种使用了 20 多年古老协议。&lt;/p&gt;
+
+&lt;p&gt;在 HTTP 里，一切都是明文传输的，流量在途中可随心所欲的被控制。传统程序事先已下至本地，运行时只有通信流量；而在线使用的 WebApp，流量里既有通信数据，又有程序的界面和代码，劫持简直轻而易举。&lt;/p&gt;
+
+&lt;p&gt;上一篇也提到，如果在户外没有 3G 信号的地方钓鱼，无法将获得的流量转发到外网。然而，使用网页这一切就迎刃而解。我们完全可以在自己的设备上搭建一个站点，留住用户发起离线攻击。对于那些连上 WiFi 能自动弹网页的设备，那就更容易入侵了。&lt;/p&gt;
+
+&lt;p&gt;因此，劫持网页流量成了各路黑客们的钟爱，一种可在任意网页发起 XSS 的入侵方式。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/http-inject.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;下面，开始我们的攻防之旅。&lt;/p&gt;
+
+&lt;h2&gt;只浏览不登陆就没事吗？&lt;/h2&gt;
+
+&lt;p&gt;每当砖家出来提醒时，总免不了这么一句：公共场合尽量不登录账号。于是，大家就认为只看网页不登陆就平安无事了。&lt;/p&gt;
+
+&lt;p&gt;如果是公共的电脑，那也就无所谓；否则，自己的一些账号可能就倒霉了。&lt;/p&gt;
+
+&lt;p&gt;在自己的设备上，大家都会记住各种账号的登录状态，反正只有自己用，也没什么大不了的。然而，在被劫持的网络里，一切皆有可能发生。即使浏览再平常不过的网页，或许一个悄无声息的间谍脚本已暗藏其中，正偷偷访问你那登录着的网页，操控起你的账号了。&lt;/p&gt;
+
+&lt;p&gt;听起来似乎很玄乎吧，砖家似乎也没说已登录的账号会怎么样。难道随便一个网页，就能让各种账号被控制吗？&lt;/p&gt;
+
+&lt;p&gt;大家都知道，HTTP 是无状态的，不像传统协议有个『会话』之类的概念。各种账号的登录状态，只能依靠浏览器的 Cookie 来实现。因此，只要有了的 Cookie 也就获得了用户账号的使用权。&lt;/p&gt;
+
+&lt;p&gt;和传统 XSS 攻击不同，流量劫持可以得到任何通信数据，当然也包括那些受 HttpOnly 保护的 Cookie。攻击脚本只需对某个站点发起请求，黑客即可在中途劫持到传输的 Cookie 数据。如果同时发起众多站点，就能覆盖相当一部分目标了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/cookie-sniffer.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;这种请求未必要真正访问一次页面，仅仅将 URL 作为图片加载，将目标站点的 Cookie 送出即可。&lt;/p&gt;
+
+&lt;p&gt;黑客得到 Cookie，即可在自己浏览器里还原出登录状态。尽管你确实没有登录操作，但那些已登录的却能出卖你。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：访问一些重要的网站，尽量不要记住登录状态，以免 Cookie 被泄露。不过，只要网站绑定了 Cookie 和 IP 段，这招的危害程度就大幅降低了，仅凭 HttpOnly 还是很不靠谱的。&lt;/p&gt;
+
+&lt;h2&gt;自动填写表单有风险吗？&lt;/h2&gt;
+
+&lt;p&gt;使用上面的方法获得 Cookie，即使能控制账号，但其密码仍无法得知，随时都有可能失去控制权。&lt;/p&gt;
+
+&lt;p&gt;不过，一些用户有让浏览器自动保存密码的习惯。通过这点，我们是否能套出记住的密码来呢？&lt;/p&gt;
+
+&lt;p&gt;分析下浏览器是如何自动填写页面表单的。其实很简单，浏览器发现页面 URL 和表单名匹配记录里的，就自动填上了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/save-pwd.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;要是在流量可控的网络里，剥离页面所有内容只剩表单，又会如何？&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/match-pwd.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;保存着的密码仍能自动填上，并且可被脚本访问到！&lt;/p&gt;
+
+&lt;p&gt;如果我们在用户访问的页面里，创建大量的隐藏框架页，即可尝试获取各种网站保存着的账号了。（不过如今 Chrome 框架页已经不会自动填写了。具体实现和浏览器有关）。&lt;/p&gt;
+
+&lt;p&gt;不过，即使框架页不自动填写，但主页面总得保留该功能吧。如果发现用户某个打开着的网页很久没有交互了，可悄悄跳转到如上那样的纯表单页，无论能否获取数据，都将继续跳转，一个接一个的尝试。。。直到用户切回窗口，再恢复到原先那个页面。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/save-sniffer.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;由于泄露的是明文的账号和密码，即使数量不多，也能通过社工获取到用户的更多信息，最终导致更严重的泄露。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：所以无论是 Cookie 记住登录，还是浏览器自动填表，重要的账号都应慎用。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;浏览器的自动填表也应增加些安全策略，例如必须有用户的交互才开始填写，规定的时间里只能填有限次。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;离开劫持环境还受影响吗？&lt;/h2&gt;
+
+&lt;p&gt;或许你在想，网络再怎么不安全，离开之后就应该没事了吧。&lt;/p&gt;
+
+&lt;p&gt;有时在公共场合赶上免费的 WiFi，打开网页看一会新闻，是常有的事。这么短的时间里能有多大的事。不过在入侵脚本面前，一小会和长久并没太大区别。机会只要出现了，无论多么短暂都能渗透。&lt;/p&gt;
+
+&lt;p&gt;如果只看重眼前利益，这种短暂的入侵并没多少利用价值；但若放远目光，能让攻击在今后发起，那就不再局限于时间和空间了。因此，我们需要一个时光机，让入侵脚本穿越到用户未来的时空运行。&lt;/p&gt;
+
+&lt;p&gt;若用传统 XSS 的思维，这几乎无法实现。但在流量劫持面前，一切皆有可能 —— 因为我们能控制任意流量！&lt;/p&gt;
+
+&lt;h3&gt;HTTP 缓存投毒&lt;/h3&gt;
+
+&lt;p&gt;上一篇文章提到，但凡有缓存的地方都是大有可为的。显然，对于有着复杂的 HTTP 缓存系统来说，存在缺陷是在所难免了。这种简单的纯文本协议，几乎没有一种签名机制，来验证内容的真实性。即使页面被篡改了，浏览器也完全无法得知，甚至连同注入的脚本也一块缓存起来。&lt;/p&gt;
+
+&lt;p&gt;于是，我们可以将『缓存投毒』的概念，引入 HTTP 协议里。但凡具备可执行的资源，都可以通过预加载带毒的版本，将其提前缓存起来。&lt;/p&gt;
+
+&lt;p&gt;为了将缓存的有效期发挥到极致，我们事先在各大网站上，找出一些过期时间长、很久没有修改的资源，评估其未来变化不大的可能。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/find-stable-res.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;当用户打开任意一个 HTTP 网页时，注入的 XSS 代码开始预加载这些资源。由于一切流量都在控制之中，我们可以完全不走代理，而是返回自己的攻击脚本。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/cache-poisoning.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;用户浏览器收到回复后，就将其一一缓存起来了。我们可以事先收集大量的资源地址，让用户在线的时间里，尽可能多的缓存受到感染。&lt;/p&gt;
+
+&lt;p&gt;未来，用户访问引用了这些资源的网站时，入侵脚本将穿越时空，从沉睡中唤醒。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/cache-actived.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;只要用户不清空缓存，这些被感染的脚本始终附着在浏览器缓存里，直到用户强制刷新页面时或许才能解脱。&lt;a href=&quot;http://www.cnblogs.com/index-html/p/wifi_hijack_3.html&quot;&gt;更多细节可参考这里&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3&gt;离线储存投毒&lt;/h3&gt;
+
+&lt;p&gt;不过，有些网站使用的都是很短的缓存，上述的入侵方式似乎就无能为力了。不过，HTML5 时代带来了一项新的缓存技术 —— 离线储存。由于它没有过期时间，因此适用于任意网页的投毒！&lt;/p&gt;
+
+&lt;p&gt;类似的，当用户触发了我们的注入脚本之后，我们创建一个隐形的框架页，加载被感染的网页。同样，通过流量劫持，我们返回一个简单的页面，里面包含一个带有 manifest 属性的 HTML 文档，以及后期运行的脚本。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/offline-poisoning.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;由于通过隐藏框架访问了这个页面，用户并不知情，但尽职的浏览器却将其缓存起来。&lt;/p&gt;
+
+&lt;p&gt;未来，用户打开被感染的网页时，浏览器直接从离线储存里取出，其中布置的脚本因此触发。&lt;/p&gt;
+
+&lt;p&gt;由于是个空白页面，因此需要填充上真实的网站内容。最简单的方法，就是嵌套一个原页面的框架，并在 URL 里加上随机数，确保是最新的在线内容。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/offline-actived.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;因为嵌套的是同域框架，最终仍能被入侵脚本所控制。&lt;/p&gt;
+
+&lt;p&gt;不过，离线存储投毒的后期影响会小一些。未来用户在安全的网络里打开页面时，浏览器会再次请求 .appcache 文件。由于这个文件并不一定存在，因此浏览器很可能删除掉离线数据。&lt;/p&gt;
+
+&lt;p&gt;理论上说只有一次的触发机会，但它没有过期时间，适用于任意 HTTP 页面投毒。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：在不安全的场合，尽量使用『隐身模式』浏览网页。例如 Chrome 里按 Ctrl+Shift+N 就能调出，可将自己处于隔离的沙盒里。&lt;/p&gt;
+
+&lt;p&gt;FireFox 浏览器存储离线文件时，会有用户交互提示，提醒用户是否有这必要。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;也许不久后，框架页面不再被离线储存所接受，新标准随时都有可能改变。但 HTTP 缓存投毒是协议栈的缺陷，因此很难防范，下一篇会发现实际入侵效果非常理想。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;使用 HTTPS 能否避免劫持？&lt;/h2&gt;
+
+&lt;p&gt;如果从密码学的角度来说，使用了 SSL 加密的数据确实难以破解，更不用谈修改了。&lt;/p&gt;
+
+&lt;p&gt;然而，惹不起但总躲得起吧。虽然无法破解，但流量仍掌握在自己手中，走哪条路还是由我说的算，完全可以绕过你。&lt;/p&gt;
+
+&lt;h3&gt;偷换证书&lt;/h3&gt;
+
+&lt;p&gt;不同于简单的 HTTP 代理，HTTPS 服务需要一个权威机构认定的证书才算有效。自己随便签发的证书，显然是没有说服力的，HTTPS 客户端因此会质疑。&lt;/p&gt;
+
+&lt;p&gt;在过去，这并不怎么影响使用过程，无非弹出一个无效的证书之类的提示框。大多用户并不明白是什么情况，就点了继续，导致允许了黑客的伪证书，HTTPS 流量因此遭到劫持。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/ssl-proxy.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;在经历越来越多的入侵事件之后，人们逐渐意识到，不能再轻易的让用户接受不信任的证书了。如今，主流浏览器对此都会给予严重的警告提示，避免用户进入伪安全站点。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/ssl-err.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;如果重要的账户网站遇到这种情况，无论如何都不该继续，否则大门钥匙或许就落入黑客之手。&lt;/p&gt;
+
+&lt;p&gt;因此，这种偷换证书的劫持，在安全意识越来越高的今天，很难再发挥实效了。我们需要一个更隐蔽的方式来躲开加密数据。&lt;/p&gt;
+
+&lt;h3&gt;过滤 HTTPS 跳转&lt;/h3&gt;
+
+&lt;p&gt;事实上，在 PC 端上网很少有直接进入 HTTPS 网站的。例如支付宝网站，大多是从淘宝跳转过来，而淘宝使用的仍是不安全的 HTTP 协议。如果在淘宝网的页面里注入 XSS，屏蔽对 HTTPS 的页面访问，用 HTTP 取而代之，那么用户也就永远无法进入安全站点了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/from-http.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;尽管地址栏里没有出现 HTTPS 的字样，但域名看起来也是正确的，大多用户都会认为不是钓鱼网站，因此也就忽视了。&lt;/p&gt;
+
+&lt;p&gt;因此，只要入口页是不安全的，那么之后的页面再安全也无济于事。&lt;/p&gt;
+
+&lt;p&gt;当然也有一些用户通过输网址访问的，他们输入了 &lt;code&gt;www.alipaly.com&lt;/code&gt; 就敲回车进入了。然而，浏览器并不知道这是一个 HTTPS 的站点，于是使用默认的 HTTP 去访问。不过这个 HTTP 版的支付宝的确也存在，其唯一功能就是重定向到自己 HTTPS 站点上。&lt;/p&gt;
+
+&lt;p&gt;劫持流量的中间人一旦发现有重定向到 HTTPS 站点的，显然不愿意让用户走这条不受自己控制的路。于是拦下重定向的命令，自己去获取重定向后的站点内容，然后再回复给用户。于是，用户始终都是在 HTTP 站点上访问，自然就可以无限劫持了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/direct-http.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;h3&gt;搜索引擎劫持&lt;/h3&gt;
+
+&lt;p&gt;事实上，HTTPS 站点还有个很大的来源 —— 搜索引擎。遗憾的是，国产搜索引擎几乎都不提供 HTTPS 服务。因此在不安全的网络里，搜索结果是不具备任何权威的。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：重要的网站必定使用 HTTPS 协议，登陆时需格外留意。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;国外的大型网站几乎都提供 HTTPS 服务，甚至是默认的标准。相比国内只有少数重要的服务才使用，绝大多数的信息都是在明文传输。这是为了方便什么来着，你猜。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;流量劫持能否控制我电脑？&lt;/h2&gt;
+
+&lt;p&gt;如果不考虑一些浏览器安全漏洞，理论上说网页与系统是完全隔离的，因此无需担心系统受到影响。&lt;/p&gt;
+
+&lt;h3&gt;钓鱼插件&lt;/h3&gt;
+
+&lt;p&gt;有时为了能让网页获得更多的在线能力，安装插件必不可少，例如支付控件、在线播放器等等。在方便使用的同时，也埋下了安全隐患。&lt;/p&gt;
+
+&lt;p&gt;如果是一些小网站强迫用户安装插件的，大家几乎都是置之不理。但若一些正规的大网站，提示用户缺少某些插件，并且配上一些专业的提示，相信大多都会选择安装。而这一切，通过被注入的攻击脚本完全能办到。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/plugin-phishing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;不过，正规的插件都是有完整的数字签名的，而伪造的很难躲过浏览器的验证，会出现各种安全提示。因此，攻击者往往使用直接下载的方式，提示用户保存并打开安装包。&lt;/p&gt;
+
+&lt;h3&gt;页面提权&lt;/h3&gt;
+
+&lt;p&gt;现在越来越多的应用程序，选择使用内嵌网页来简化界面的开发，在移动设备上更是普遍。&lt;/p&gt;
+
+&lt;p&gt;通常为了能让页面和客户端交互，赋予一些本地程序的接口供调用，因此具有了较高的权限。不过，正常情况下嵌入的都是受白名单限制的可信页面，因此不存在安全隐患。&lt;/p&gt;
+
+&lt;p&gt;然而在被劫持的网络里，一切明文传输的数据都不再具备可信度。同样的脚本注入，就能获得额外的权限了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack-2/hybrid-app.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;一些带有缺陷的系统，攻击脚本甚至能获得出乎意料的能力。通过之前提到的网页缓存投毒，这颗埋下的地雷随时都有可能触发。&lt;/p&gt;
+
+&lt;h3&gt;下载程序&lt;/h3&gt;
+
+&lt;p&gt;即使上网从不安装插件，但是下载程序还是经常需要的。由于大多数的下载网站，使用的都是 HTTP 流量，因此劫持者能轻易的修改可执行文件，将其感染上病毒或木马，甚至完全替换成另一个程序。&lt;/p&gt;
+
+&lt;p&gt;用户总认为从官网上下载的肯定没问题，于是就毫无顾虑的打开了。这时，入侵的不再是浏览器环境，而是能控制整个系统了。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：如果是从浏览器里下载的程序，留意是否具有数字签名，正规的厂商几乎都会提供。如果想试用一些来路不明的小程序，保存到虚拟机里使用就放心多了。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;未来 SPDY 技术普及的时候，就再不用担心网页劫持这些事。它将 HTTP 协议封装在加密的流量里传输，想劫持一个普通网页都很困难了。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;结尾&lt;/h2&gt;
+
+&lt;p&gt;暂时就说到这。事实上类似 XSS 的攻击方式还有很多，这里只谈了一些能和流量劫持配合使用的。利用上一篇讲述的各种劫持途径，配合本文提到的入侵方式，可以劫持不少用户了。下一篇，将演示如何利用这些原理，发起实战攻击。&lt;/p&gt;
+</description>
+                <pubDate>Thu, 10 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/traffic-hijack-2</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/traffic-hijack-2</guid>
+            </item>
+        
+            <item>
+                <title>流量劫持是如何产生的？</title>
+                <description>作者：zjcqoo &lt;br&gt; &lt;p&gt;流量劫持，这种古老的攻击沉寂了一段时间后，最近又开始闹的沸沸扬扬。&lt;a href=&quot;http://news.163.com/14/0401/07/9ONRBN0F00014JB6.html&quot;&gt;众多知名品牌的路由器相继爆出存在安全漏洞&lt;/a&gt;，引来国内媒体纷纷报道。只要用户没改默认密码，打开一个网页甚至帖子，路由器配置就会被暗中修改。互联网一夜间变得岌岌可危。&lt;/p&gt;
+
+&lt;p&gt;攻击还是那几种攻击，报道仍是那千篇一律的砖家提醒，以至于大家都麻木了。早已见惯运营商的各种劫持，频繁的广告弹窗，大家也无可奈何。这么多年也没出现过什么损失，也就睁只眼闭只眼。&lt;/p&gt;
+
+&lt;p&gt;事实上，仅仅被运营商劫持算是比较幸运了。相比隐匿在暗中的神秘黑客，运营商作为公众企业还是得守法的，广告劫持虽无节操但还是有底线的。这不，能让你看见广告了，也算是在提醒你，当前网络存在被劫持的风险，得留点神；相反，一切看似风平浪静毫无异常，或许已有一个天大的间谍潜伏在网络里，随时等你上钩 —— 这可不是弹广告那样简单，而是要谋财盗号了！&lt;/p&gt;
+
+&lt;h2&gt;我会被劫持吗？&lt;/h2&gt;
+
+&lt;p&gt;不少人存在一个错误的观点：只有那些安全意识薄弱的才会被入侵。只要装了各种专业的防火墙，系统补丁及时更新，所有的密码都很复杂，劫持肯定是轮不到我了。&lt;/p&gt;
+
+&lt;p&gt;的确，安全意识强的自然不容易被入侵，但那只对传统的病毒木马而已。而在流量劫持面前，几乎是人人平等的。网络安全与传统的系统安全不同，网络是各种硬件设备组合的整体，木桶效应尤为明显。即使有神一样的系统，但遇到&lt;a href=&quot;http://www.oschina.net/news/45251/reverse-engineering-a-d-link-backdoor&quot;&gt;猪一样的设备&lt;/a&gt;，你的安全等级瞬间就被拉低了。现在越来越流行便宜的小路由，它们可是承载着各种网上交易的流量，你能放心使用吗？&lt;/p&gt;
+
+&lt;p&gt;即使你相信系统和设备都绝对可靠，就能高枕无忧了吗？事实上有问题的设备并不多，但出问题的事却不少，难道其中还存在什么缺陷？没错，还遗漏了最重要的一点：网络环境。&lt;/p&gt;
+
+&lt;p&gt;如果网络环境里有黑客潜伏着，即使有足够专业的技术，是在所难逃了，敌暗我明，稍不留神就会落入圈套。&lt;/p&gt;
+
+&lt;p&gt;当然，苍蝇不叮无缝的蛋。有哪些隐患导致你的网络环境出现了裂缝？太多了，从古到今流行过的攻击方式数不胜数。甚至可以根据实际环境，自己创造一种。&lt;/p&gt;
+
+&lt;p&gt;现在回忆下尝试过的劫持案例。&lt;/p&gt;
+
+&lt;p&gt;上古时代：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Hub 嗅探&lt;/li&gt;
+&lt;li&gt;MAC 欺骗&lt;/li&gt;
+&lt;li&gt;MAC 冲刷&lt;/li&gt;
+&lt;li&gt;ARP 攻击&lt;/li&gt;
+&lt;li&gt;DHCP 钓鱼&lt;/li&gt;
+&lt;li&gt;DNS 劫持&lt;/li&gt;
+&lt;li&gt;CDN 入侵&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;中世纪：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;路由器弱口令&lt;/li&gt;
+&lt;li&gt;路由器 CSRF&lt;/li&gt;
+&lt;li&gt;PPPoE 钓鱼&lt;/li&gt;
+&lt;li&gt;蜜罐代理&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;工业时代：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;WiFi 弱口令&lt;/li&gt;
+&lt;li&gt;WiFi 伪热点&lt;/li&gt;
+&lt;li&gt;WiFi 强制断线&lt;/li&gt;
+&lt;li&gt;WLAN 基站钓鱼&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Hub 嗅探&lt;/h2&gt;
+
+&lt;p&gt;集线器（Hub）这种设备如今早已销声匿迹了，即使在十年前也少有人用。作为早期的网络设备，它唯一的功能就是广播数据包：把一个接口的收到的数据包群发到所有接口上。且不吐槽那小得惊人的带宽，光是这转发规则就是多么的不合理。任何人能收到整个网络环境的数据，隐私安全可想而知。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/hub.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;嗅探器成了那个时代的顶尖利器。只要配置好过滤器，不多久就能捕捉到各种明文数据，用户却没有任何防御对策。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：还在用的赶紧扔了吧。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;这种设备目前唯一可用之处就是旁路嗅探。利用广播的特性，可以非常方便分析其他设备的通信，例如抓取机顶盒的数据包而不影响正常通信。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;MAC 欺骗&lt;/h2&gt;
+
+&lt;p&gt;交换机的出现逐渐淘汰了集线器。交换机会绑定 MAC 地址和接口，数据包最终只发往一个终端。因此只要事先配置好 MAC 对应的接口，理论上非常安全了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/switch.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;不过，很少有人会那么做，大多为了偷懒，直接使用了设备默认的模式 —— 自动学习。设备根据某个接口发出的包，自动关联该包的源地址到此接口。&lt;/p&gt;
+
+&lt;p&gt;然而这种学习并不智能，甚至太过死板，任何一个道听途说都会当作真理。用户发送一个自定义源 MAC 地址的包是非常容易的，因此交换机成了非常容易被忽悠的对象。只要伪造一个源地址，就能将这个地址关联到自己的接口上，以此获得受害者的流量。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/switch-spoofing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;不过，受害者接着再发出一个包，绑定关系又恢复原先正常的。因此只要比谁发的频繁，谁就能竞争到这个 MAC 地址的接收权。如果伪造的是网关地址，交换机就误以为网关电缆插到你接口上，网络环境里的出站流量瞬间都到了你这里。&lt;/p&gt;
+
+&lt;p&gt;当然，除非你有其他出站渠道，可以将窃取的数据代理出去；否则就别想再转发给被你打垮的真网关了，被劫持的用户也就没法上外网。所以这招危害性不是很大，但破坏性很强，可以瞬间集体断网。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：机器固定的网络尽量绑定 MAC 和接口吧。貌似大多数网吧都绑定了 MAC 和接口，极大增强了链路层的安全性。同时，独立的子网段尽可能划分 VLAN，避免过大的广播环境。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;大学里见过千人以上还不划分 VLAN 的，用一根短路网线就可以毁掉整个网络。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;MAC 冲刷&lt;/h2&gt;
+
+&lt;p&gt;之前说了集线器和交换机的转发区别。如果交换机发现一个暂时还未学习到的 MAC 地址，将会把数据包送往何处呢？为了不丢包，只能是广播到所有接口。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/switch-broadcast.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;如果能让交换机的学习功能失效，那就退化成一个集线器了。由于交换机的硬件配置有限，显然不可能无限多的记录地址对应条目。我们不停伪造不重复的源地址，交换机里的记录表很快就会填满，甚至覆盖原有的学习记录，用户的数据包无法正常转发，只能广播到所有接口上了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/switch-flood.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：还是 MAC 和接口绑定。一旦绑定，该接口只允许固定的源地址，伪造的自然就失效了。当然，好一点的交换机都有些策略，不会让一个接口关联过多的 MAC 地址。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;曾经在家试过一次，捕捉到小区内用户上网的流量。不过伪造包发的太快，~15万包/秒，更致命的是发错目标地址，发到城域网准入服务器上，导致工作人员切断了整个小区半天的网络... 所以必须得选一个 VLAN 内的、并且实际存在的地址做为目标 MAC，以免产生大量的数据风暴。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;ARP 攻击&lt;/h2&gt;
+
+&lt;p&gt;这种攻击大家几乎都听出老茧了，即使不懂电脑的人也知道装个 ARP 防火墙保平安，其危害之大可想而知。&lt;/p&gt;
+
+&lt;p&gt;简单的说，ARP 就是广播查询某个 IP 对应的 MAC 地址，在用这个 IP 的人回个声。知道这个 IP 对应的 MAC 地址，就可以链路通信了（链路层只能通过MAC地址通信）。如果有人冒充回复，并抢在正常人之前，伪造的答案也就先入为主。IP 被解析到错误的地址上，之后所有的通信都被劫持了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/arp-spoofing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;事实上，早期的系统还有个更严重的BUG：直接给用户发送一个 ARP 回复包，即使对方从没请求过，系统也会接受这个回复，并提前保存里面的记录。这种基于缓存的投毒，让劫持成功率更上一层楼。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/arp-poisoning.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：由于这种攻击太过泛滥，以至大部分路由器都带了防 ARP 攻击的功能。客户端的 ARP 防火墙也数不胜数，似乎成了安全软件的标配。当然，系统也支持强制绑定 IP 与 MAC 的对应，必要时可以使用。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;很多教程都是用 Wireshark 来演示，事实上当年有一款叫 Iris 的软件非常好用，可以修改封包再次发送，用它可以很容易搞明白各种攻击的原理。不过N年没更新了还不支持64位的。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;DHCP 钓鱼&lt;/h2&gt;
+
+&lt;p&gt;现实中，并不是每个人都会配置网络参数，或者出于方便，让网络系统自动配置。出于这个目的，DHCP 服务诞生了。&lt;/p&gt;
+
+&lt;p&gt;由于没有配置IP地址、网关、DNS 等，在网络上是寸步难行的，因此首先需要从 DHCP 那获得这些。然而，既然连 IP 地址都没有，那又是如何通信的？显然，只能发到广播地址（255.255.255.255）上，而自己则暂时使用无效的IP地址（0.0.0.0）。（事实上，链路层的通信只要有 MAC 地址就行，IP 地址已属于网络层了，但 DHCP 由于某些特殊需要使用的是 UDP 协议）&lt;/p&gt;
+
+&lt;p&gt;因为是发往广播，内网环境里的所有用户都能听到。如果存在多个DHCP服务器，则分别予以回复；用户则选择最先收到的。由于规则是如此简单，以至于用户没有选择的余地。&lt;/p&gt;
+
+&lt;p&gt;尚若黑客也在内网里也开启了 DHCP 服务，用户收到的回复包很可能就是黑客发出的，这时用户的网络配置完全听天由命了，不想被劫持都难了。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：如果是用网线上网的话，最好还是手动的配置。当然，管理员应该严格控制 DHCP 回复的权限，只允许交换机特定的接口才有资格发送回复包。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;只要是这类提问/抢答模式的，都面临被冒充回答的风险。很多原理都类似。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;DNS 劫持&lt;/h2&gt;
+
+&lt;p&gt;如同 ARP 将 IP 解析成 MAC 地址 一样，DNS 负责将域名解析成 IP 地址。作为网络层的服务，面对的用户更广泛，当然面临的风险也大的多。一旦遭到入侵，所有用户都倒霉了。近些年的重大网络事故无不和 DNS 有关。&lt;/p&gt;
+
+&lt;p&gt;DNS 服务一旦被黑客控制，用户发起的各种域名解析，都将被暗中操控。将正常网站解析成黑客服务器的 IP，并事先开启了 HTTP 代理，用户上网时几乎看不出任何破绽；而黑客则获取到所有访问流量，各种网站账号信息都将一览无余。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/dns-hijack.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;由于 DNS 服务器的重要性，现实中通常有着较高的安全防护，想入侵它系统不是件易事。但实际未必如此兴师动众，一些 DNS 程序本身就存在着设计缺陷，导致黑客能控制某些域名的指向。其中最恶名昭彰的当属 &lt;a href=&quot;http://www.doc88.com/p-2876155719825.html&quot;&gt;DNS 缓存投毒&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;大家或许已发现，域名-&amp;gt;IP-&amp;gt;MAC-&amp;gt;接口，只要是动态查询的就会多一个环节，风险自然增加。灵活性与安全性始终是不可兼得。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：手动设置一些权威的 DNS 服务器，例如 8.8.8.8，4.4.4.4 会靠谱的多。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;公网上的 DNS 劫持很少发生，但家用路由器的 DNS 劫持已泛滥成灾了。开头报道的路由器漏洞，最终的利用方式也就是修改了 DNS 地址。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;CDN 入侵&lt;/h2&gt;
+
+&lt;p&gt;CDN 能加速大家都知道，但其中原理不少人都不清楚。其实，CDN 本身就是一种 DNS 劫持，只不过是良性的。&lt;/p&gt;
+
+&lt;p&gt;不同于黑客强制 DNS 把域名解析到自己的钓鱼 IP 上，CDN 则是让 DNS 主动配合，把域名解析到临近的服务器上。这台服务器同样也开启了 HTTP 代理，让用户感觉不到 CDN 的存在。&lt;/p&gt;
+
+&lt;p&gt;不过 CDN 不像黑客那样贪心，劫持用户所有流量，它只『劫持』用户的静态资源访问，对于之前用户访问过的资源，CDN 将直接从本地缓存里反馈给用户，因此速度有了很大的提升。&lt;/p&gt;
+
+&lt;p&gt;然而，只要是有缓存的地方，都是大有可为的。一旦 CDN 服务器遭受入侵，硬盘上的缓存文件就岌岌可危了，网页被注入脚本，可执行文件被感染，一大波僵尸即将出现。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/cdn-hijack.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：感觉运营商不靠谱的话，换个第三方不带加速的 DNS，或许就不会解析到 CDN 服务器上了。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;不少 CDN 黑白通吃，为了省流量不按套路出牌，超过了缓存时间也不更新，甚至还有忽略 URL 问号后面的，导致程序猿们在资源更新的问题上头疼不已。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;路由器弱口令&lt;/h2&gt;
+
+&lt;p&gt;当电脑价格一再下降，到了大家打算买第二台的时候，路由器市场也随之火热起来。&lt;/p&gt;
+
+&lt;p&gt;但由于繁琐的配置，差劲的用户体验，至今仍有相当部分的用户不明白如何配置路由器。192.168.1.1 和 admin/admin 几乎成了国内路由器的常量。多少回，用这毫无技术含量的方法进入网吧或图书馆的路由器后台。&lt;/p&gt;
+
+&lt;p&gt;如果有人恶搞重启路由，或者给他人限速，你得感谢他的仁慈，这都算不严重。要是把路由器的DNS给改了，那就相当严重了！公网的 DNS 劫持一般不会持续太久，但路由器的 DNS 劫持也许长年累月都不会觉察到。&lt;/p&gt;
+
+&lt;p&gt;事实上，不乏一些安全意识强的用户也使用默认密码。理由很简单，目前的路由器有两道门槛：一个 WiFi 连接密码，另一个才是管理密码。很多人设置了复杂的 WiFi 密码就高枕无忧了，心想都连不到我的网络里怎么可能进的了后台？&lt;/p&gt;
+
+&lt;p&gt;之前我也有过这观念，但总觉不对劲：万一家里其他电脑或手机中毒了，自动尝试用弱口令爆进路由器后台怎么办。城门都被占领了，城墙再牢固又有何用。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/router-weak-pwd.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;事实上，黑客除了修改 DNS 配置外，还有更恐怖的行为：升级路由器的固件 —— 替换成一个看似完全相同但植入了恶意程序的固件！尽管这目前还尚未普及，然而一旦流行，大批路由器将成为潘多拉魔盒。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：千万别轻视路由器的密码，其实它比你所有账号都重要。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;不改默认密码的用户，神都保佑不了你~&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;路由器 CSRF&lt;/h2&gt;
+
+&lt;p&gt;回到本文开始所说的，为什么有那么多路由器会出现这个漏洞呢？也许是路由器的开发人员太高估用户了，认为绝大多数用户都修改了默认密码，因此 CSRF 几乎难以产生。&lt;/p&gt;
+
+&lt;p&gt;事实上，国内网民的安全意识远超他们的想象。加上刚才说的，只设置了 WiFi 密码而忽略了管理密码，导致一个恶意程序就能悄悄进入路由器后台。&lt;/p&gt;
+
+&lt;p&gt;没想到现在这种病毒还真出现了，而且居然还是 Web 版的！&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/router-csrf.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;CSRF 漏洞让病毒木马都用不着了。用户直接访问一个网页，甚至是一帖子，浏览器自动向路由器发起修改配置的请求。&lt;/p&gt;
+
+&lt;p&gt;由于国产路由器的网页开发是如此的差劲，登录基本都是用既不安全又丑陋的 HTTP 401 弹框。这种登录只需在URL里填上『用户名:密码@』即可自动通过，即使&lt;a href=&quot;http://cnblogs.com/index-html/archive/2012/08/15/extern_img.html&quot;&gt;登录失败也不会有什么提示&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：绝对要看管好路由器密码，并且定期去检查配置是否被篡改。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;看过路由器页面源代码会发现，那简直是惨不忍睹，甚至还是 IE5 时代的风格。路由器芯片都是采购的，内核也有开源的，所谓的『自主研发』就是做了那几个页面？&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;PPPoE 钓鱼&lt;/h2&gt;
+
+&lt;p&gt;好了，不吐槽路由器了，下面说说再高级的路由器也无法避免的事。&lt;/p&gt;
+
+&lt;p&gt;除了一些大公司或学校，用的是固定的专线接入上网，个人或者小组织很少会使用这种土豪级套餐，只能老老实实的拨号上网 —— 无论是电信，还是网通铁通各种通。&lt;/p&gt;
+
+&lt;p&gt;不少人都存在误区，认为拨号是物理信号的建立过程，在没有拨上之前，点对点是不通的。如果真是这样，那么拨号时账号密码是如何传过去的呢？显然不可能。事实上，终端之间时刻都是畅通的，只不过不拨号就无法得到IP、网关、会话等参数，即使强制把包发给网关，人家虽能收到，但没有认证的会话是不予理睬的，你自然没法上网。&lt;/p&gt;
+
+&lt;p&gt;PPPoE，大家经常在拨号时看到这词。Point-Point Protocol over Ethernet，故名思议，就是点对点的协议：用户发送账号密码认证给终端（BRAS），并得到上网 IP、网关地址、会话等。而且协议是基于以太网的，哪怕线路不是，也得想办法把数据封装进去。&lt;/p&gt;
+
+&lt;p&gt;传统的 ADSL 是通过电话线上网的，于是需要一个『猫』来把以太网数据调制成电话信号，最终通过电信交换机传输。这种设备保障每家每户都是独立的，以免电话信号被窃听。&lt;/p&gt;
+
+&lt;p&gt;然而，后来兴起的各种通就不一定了。不少打着的『千兆到楼，百兆到家』的宽带，就是建了N个小区局域网，然后合并到一个大的城域网（MAN）里。所谓的『百兆』，无非就是拖进你家的那根网线插在楼下一个 100Mbps 的交换机上而已。&lt;/p&gt;
+
+&lt;p&gt;用过网通的都知道，百兆带宽并没有快到哪里，甚至在一些南方地区网速慢如蜗牛。但在下载的时候，却能轻松飙到数兆每秒。这时局域网的作用就发挥出来了，如果附近有多个人在看同样的视频，P2P 就直接在内网里共享流量了，大幅减轻了节点的压力。&lt;/p&gt;
+
+&lt;p&gt;但是，整个小区成了一个局域网，是多么的不安全。有时甚至不合理的 VLAN 划分，导致多个小区成一内网。要是有人开启 DHCP 服务，其他用户插上网线就能上网了，连拨号都不用，难道天上掉馅饼了？如果敢吃，那可能就落入黑客的陷阱了。&lt;/p&gt;
+
+&lt;p&gt;当然，现在直接插网线的并不多，基本通过路由器自动拨号了。但他们的协议都是一样的 —— PPPoE，一种极不安全的协议。&lt;/p&gt;
+
+&lt;p&gt;类似 DHCP 协议，PPPoE 也是通过广播来探寻有哪些可用的终端，意味着整个小区的内网用户都能收到；同时探寻包一直往上冒泡，直到被城域网的终端们收到，然后开始纷纷回应。&lt;/p&gt;
+
+&lt;p&gt;如果小区里有人私自开启一个 PPPoE 终端服务，显然是最先被收到的。真正的回应包还在大街小巷里传递着，用户和黑客已经开始协商认证了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/pppoe-phishing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;不过或许你会说，这必须有人拨号才能上钩，现在都用路由器，长年累月不会断开。如果不想耐心等，也有很简单的方法：来一次集体掉线。&lt;/p&gt;
+
+&lt;p&gt;刚刚说过，可以用短路的网线，引发一场广播风暴。不过这太过暴力了，甚至会引起流量异常的报警。我们可以使用更简单有效的方法：MAC 欺骗，不停伪造终端服务器的 MAC 地址，就可以将小区用户的数据包统统吸过来了。&lt;/p&gt;
+
+&lt;p&gt;PPPoE 使用的是一种隧道方式，将任何数据都封装在其栈下，因此捕捉到用户任意一个包，即可得到PPPoE栈上的会话ID。然后冒充终端，向用户发送一个『断开连接』的指令，用户就乖乖下线了。使用这种方法，分分钟就能让整个小区的用户重新拨一次号，于是可以快速钓鱼了。&lt;/p&gt;
+
+&lt;p&gt;还有更糟的是，PPPoE 绝大多数时候都是明文传输用户名和密码的，因此还能额外获得用户发来的认证账号。&lt;/p&gt;
+
+&lt;p&gt;前面吐槽了大学寝室楼 1000 多机器还不划 VLAN 的，于是写一个简单的 PPPoE 模拟器，就能轻松抓到整个网络环境里的上网账号。（还支持一键全都拨上，集体下线的恶作剧功能~）&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/pppoe-phishing-demo.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：由于 PPPoE 的安全严重依赖物理层，所以尽量不要装以太网接入的宽带。当然，管理员们应该严格限制 PPPoE 搜寻回复包，就像 DHCP 那样只允许特定接口出现。事实上小区内部是不可能出现 BRAS 服务器的，因此只允许交换机的 WAN 口出现回复包，那样就不容易被钓鱼了。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;PPPoE 还有个更严重 BUG，会话 ID 只有 2 字节，最多 65536 种可能。事先构造个『拨号断开』的请求包，接着把会话 ID 依次遍历一下，就能让某个终端服务器的所有用户下线。如果事先收集好所有终端服务器地址，可以发起一次全城断网- -&lt;/p&gt;
+
+&lt;p&gt;这个 BUG 应该早已经修复了，只需绑定 &lt;会话 ID，用户 MAC，小区 VLAN-ID&gt; 关系即可。而且一个小脚本就能断开全城各县市的网络，说明终端部署不能太过集中。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;蜜罐代理&lt;/h2&gt;
+
+&lt;p&gt;由于众所周知的原因，某国对代理的需求居高不下。不管黑的白的，透明的还是高匿的，只要能翻出去就是好的。&lt;/p&gt;
+
+&lt;p&gt;VPN 需要用户名密码以及各种认证，中途被劫持几乎是不可能的。黑客抓住了人们的纯真的心里，将目光转到代理上面。的确，加密后的数据中途确实难以劫持，但最终仍要在服务端还原出真实内容吧。如果一时大意，连接了某个免费的 VPN，或许就登上了黑客的贼船了。&lt;/p&gt;
+
+&lt;p&gt;相比 HTTP 代理只影响部分功能，VPN 将整个系统的流量都通过穿越过去了。而这一切应用程序并不知晓，仍然将一些重要的数据往外发送，最终被黑客所劫持。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/honey-proxy.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：不要贪图小利，用那些打着免费幌子的代理。天下没有免费的午餐。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;很多蜜罐代理未必是黑客布下的，而是你懂的。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;WiFi 弱口令&lt;/h2&gt;
+
+&lt;p&gt;当互联网延伸到移动设备时，网线成了最大的累赘，无线网络逐渐进入人们视野。如今，由于无线的廉价和便利，几乎应用到所有的便捷设备。一切都不再受限制，人们可以随时随地上网，这是过去难以想象的；黑客也可以随时随地发起攻击，这是过去梦寐以求的。&lt;/p&gt;
+
+&lt;p&gt;但无论上网方式如何变化，以太网始终是网络的核心。如同刚才说的 ADSL，尽管载体是电话线路，但最终解调出来的仍是以太网数据。WiFi 也一样，无论电波怎样传播，最终只有还原出标准的以太网封包才能被路由。&lt;/p&gt;
+
+&lt;p&gt;无线网络形同一个看不见的巨大集线器，无需任何物理传播介质，附近所有人都可以收听数据信号，专业设备甚至能在更远处捕获。如果没有一种强有力的加密方式把数据封装起来，那么就毫无隐私可言了。&lt;/p&gt;
+
+&lt;p&gt;在经历了各种加密被攻破后，WPA2 如今成为无线网络标准加密算法。如果企图通过传统爆后台那样，一次次的尝试弱口令去连接，那效率将是何其的低下。&lt;/p&gt;
+
+&lt;p&gt;和拨号不同，WiFi 用户首先需『关联』热点，以建立起物理通道。类似 PPPoE 那样，WiFi 在认证之前也是可以通信的，并且是明文数据 —— 不过，这仅仅是认证数据包明文而已，真正密码显然不会出现在其中。毕竟它和拨号的目的完全不同：一个是为了加密之后所有的流量，而后者仅仅识别下你有没有上网的权限。&lt;/p&gt;
+
+&lt;p&gt;通过传统的嗅探工具，可以方便获取这些握手通信包。尽管找不出密码，但里面保存着密钥初始化相关的数据。通过专业的 WPA2 破解工具，加上丰富的密码字典，有相当一部分的无线网络，能在可接受的时间里被破解。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/wifi-weak-pwd.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;对于不少人来说，无线密码是他第一道也是唯一一道防线。连上之后，不出意外即可轻易进入路由器后台，然后就可以控制他整个内网的流量了。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：最简单也是最有效的方法：给密码加些特殊符号。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;如果给他的路由器刷一个固件，能自动破解其他的无线网络，破解之后自动进后台，自动给它升级自己的固件。。。排山倒海的路由器木马爆发了。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;WiFi 热点钓鱼&lt;/h2&gt;
+
+&lt;p&gt;上面简单的说了无线密码的破解。但若本来就知道密码的情况下，又如何发起入侵呢？&lt;/p&gt;
+
+&lt;p&gt;这种场合很常见，在一些商场、餐厅、旅馆等地方，无线网络即使有密码，大家一般也能在墙上或卡片上找到，处于半公开的状态。或者是破解了邻居的无线密码，但无法进入路由器后台，又该如何继续？&lt;/p&gt;
+
+&lt;p&gt;如今越来越智能的无线设备，已能很好的防御诸如 MAC 欺骗以及 ARP 攻击这类原始入侵了，因此需要一个更先进和隐蔽的方式，能绕过网络设备，直接发起点对点的进攻。&lt;/p&gt;
+
+&lt;p&gt;在大公司或大商场上过无线网的用户会发现，在室内无论走到哪里网络都存在，即使从一层到五层信号照样满格，而在自己家中信号隔墙就下降不少。难道是开了信号特别强大的热点吗？但在建筑外面却收不到。事实上，不难发现每层楼天花板上，都吸附着不少盘子似的东西。没错，正是这些分布在各处的设备，覆盖了整栋楼的无线网络，让信号死角变得更少。&lt;/p&gt;
+
+&lt;p&gt;但是同时存在那么多热点，搜索列表里显示的却没有几个。因为他们都有着同样的热点名（SSID），客户端通常会将同名热点合并成一个。至于连接时，系统会选择信号最好的那个。如果这些热点的认证方式也是相同的，无论连哪个都没问题。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/wifi-ds.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;仔细揣摩这条特征，不难发现其中大有文章可做 —— 这不天生就为我们钓鱼准备的！我们再开一个同名同认证的伪热点，只要在信号上压倒对方，钓上附近的鱼儿那是妥妥的。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/wifi-spoofing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;目前几乎还没有哪个客户端对此有防御，无论是商场还是咖啡店，甚至是一些大公司里，对此也束手无策。原因很简单，问题既不出在设备、也不是部署上，更不能归咎与用户。这是整个协议栈的弱点。&lt;/p&gt;
+
+&lt;p&gt;发起此攻击的唯一材料，就是一个超大功率的热点，以此来压倒正常的，争做用户『最信赖』的信号源。&lt;/p&gt;
+
+&lt;p&gt;其实，每个热点都时时刻刻广播着一种叫 Beacon 的数据包，里面带有热点名等相关的信息。用户网卡收集之后进过筛选分析，即可得知附近有哪些热点，各自信号如何。功率大的热点，用户接收时的信号强度（RSSI）自然也会高一些。&lt;/p&gt;
+
+&lt;p&gt;当然，过高的信号源可能会引起一些监控的警觉，自己也被置于巨大的辐射之中。如果仅仅是对某个方位片杀，使用定向天线会有更好的效果。&lt;/p&gt;
+
+&lt;p&gt;不过，光有发射能力还是不够的。即使能把 Beacon 推送到数十公里外，让全城都能看见你的热点名，但前来连接的设备可没有那么强劲信号。因此没有一个高灵敏的接收系统，再强的信号也只是一厢情愿罢了。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：因为是底层的缺陷，这种劫持通常很难防护。从理论上说，热点通常是固定着的，因此可以事先记录下每个热点的3D坐标，然后根据 WiFi 定位时刻监控热点位置，如果某个热点信号出现在远离事先的地方，很可能是钓鱼热点发出的假信号。&lt;/p&gt;
+
+&lt;p&gt;但在现实中，要同时追踪那么多设备并不容易。除非所有的无线设备，都自带监控附近热点的功能，那样可以节省大量追踪成本。&lt;/p&gt;
+
+&lt;p&gt;不过在安全性高的场合，还是使用『接入认证』，连接时要求输入用户名和密码来准入。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;用户成功连上 WiFi 后，导致网络状态发生改变，一些系统会尝试请求某个特定的 URL，如果返回的是 HTTP 302，会自动弹出重定向后的网页。目的是为了方便打开网页版的准入，有时连上 CMCC 会自动弹出一个登录网页就是如此。iPhone，iPad，WP 都支持，MacOS 最新版弹出的网页不会执行脚本了。利用这个废功能来弹广告应该很不错~&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;WiFi 强制断线&lt;/h2&gt;
+
+&lt;p&gt;不得不说 WiFi 的另一个缺陷 —— 被下线。类似 PPPoE 主动或被动断开拨号时都有一个注销包，WiFi 也一样。&lt;/p&gt;
+
+&lt;p&gt;之前提到，遍历 PPPoE 的会话ID，冒充所有用户发出注销请求，可以断开全城的网络。WiFi 也有类似的缺陷，只不过正好反过来：冒充热点，向所有用户广播注销包，于是所有连着该热点的用户都下线了。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/wifi-deauth.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;不过，WiFi 的被下线仅仅是认证被注销，用户和热点仍是关联着的。用户接着重新发起认证，因此又给黑客一个获取握手数据的机会。&lt;/p&gt;
+
+&lt;p&gt;如果广播持续不断，用户也就一直没法上网，屏幕上会不停的闪烁着『连接中... / 已断开』。对方可能会尝试重启路由，但发现问题仍在，而且所有设备都是这情况，会认为路由器出问题了，于是尝试恢复出厂设置 —— 这一刻，危险降临了！&lt;/p&gt;
+
+&lt;p&gt;照国产路由器的风格，出厂时 WiFi 是没有密码的，而且后台基本是弱口令。因此有个非常短暂的安全缝隙，能钻入这台设备并拿下他的网络！如果事先写好脚本，一旦发现有开放的热点，立即连上并且爆入后台，更是可以直接秒杀！对方刚恢复完路由器，还没回到电脑前就已被劫持了，这是无论如何也想不到的。。。&lt;/p&gt;
+
+&lt;p&gt;当然，为了防止他之后进入路由器改密码，你必须立即隐藏 SSID，让 Beacon 不再发出，这样大家都看不见这台设备了，只能通过 BSSID（路由器 MAC 地址）来连接。但是人家会有疑问，刚恢复好的路由器怎么看不见？这时得事先建立一个钓鱼热点，名字和那被隐藏的 SSID 一样，将对方引诱到自己的蜜罐上。&lt;/p&gt;
+
+&lt;p&gt;在这个蜜罐里开启一个和路由器页面差不多的站点（可以直接反向代理他路由器的页面），拖住用户，让你有充足的时间来操作那台被隐藏的真设备。甚至可以换掉他固件了！&lt;/p&gt;
+
+&lt;p&gt;当然，有些设备不让轻易更新固件，需要输入路由器上的某个号码，或者按一个键才能开始。这时得发挥蜜罐站点的作用了，你可以在页面上画个文本框，提示他输入路由器上的那号码，或者直接让他去按那按钮。由于路由器后台太过专业，很少会有人质疑它的权威性，几乎都是按部就班。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/honey-router.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;事实上，你的蜜罐一直开着，对方肯定会在里面配置 WiFi 密码和管理密码，以及 PPPoE 账号。于是他的一切上网秘密都被掌控！即使不改他路由器也无所谓了，以后可以随时进入。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：不要轻易恢复路由器的出厂设置。真有必要请务必留神，尽快改掉默认密码。即使周围没有黑客，一些中毒的设备随时可能来连上并爆进后台窜乱。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;软硬兼施，这招是不是太阴了？稍微用一点心理学或是社工，原本不怎么严重的漏洞可以扩大很多倍。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;WLAN 基站钓鱼&lt;/h2&gt;
+
+&lt;p&gt;前面说的热点钓鱼，只能在特定的场合下进行。劫持KFC的用户，只能在KFC附近；入侵小区的路由，只能在家完成。这极大的限制了攻击范围，完全没有发挥出无线网络的灵活性。&lt;/p&gt;
+
+&lt;p&gt;然而有一种网络，无论走到哪都能收到。打开手机，总能看见 CMCC 这类热点如同幽灵一般存在。如今，WLAN 业务已遍地开花，几乎覆盖了全国各地。它支持更高的频段，并向下兼容 WiFi，设备遍布全城，试图打造一个无线城域网。唯一的遗憾是收费的，而且信号也一般，远不如 3G 实用。&lt;/p&gt;
+
+&lt;p&gt;有时我们并没有连接这些热点，系统却自动连上了。原因很简单，之前某个时候手贱，去连过它们。而系统会保存主动连过的热点，再次出现时就自动上了。事实上，去连过这些热点的人不在少数。&lt;/p&gt;
+
+&lt;p&gt;不用说，你也想到开热点钓鱼了。并且用户几乎都是用 WiFi 来连接，也就没有必要使用 WLAN 设备。使用之前的大功率热点，取个 CMCC 的名字，放在阳台上对着大街，不一会就连上一堆用户了。要是支持虚 AP 的话，把 CMCC-AUTO，ChinaNet 等等这些名字全部用上，前来光临的就更多了。&lt;/p&gt;
+
+&lt;p&gt;上面提到了，不少设备连上 WiFi 后能自动弹网页，利用这个特性，钓鱼就更容易了。大多手机系统为了节省流量，当 WiFi 和 3G 同时可用时，会优先使用 WiFi，于是用户的流量不知不觉流到黑客那里。&lt;/p&gt;
+
+&lt;div class=&quot;post-img&quot;&gt;&lt;img src=&quot;/img/traffic-hijack/wlan-phishing.png&quot; style=&quot;max-width:840px;&quot; /&gt;&lt;/div&gt;
+
+&lt;p&gt;事实上，我们还可以把整套钓鱼方案集成到安卓里。利用手机创建的热点吸引附近的用户，捕捉到的流量还可以通过自己的 3G 网络代理出去。使用 Linux 内核强大的转发机制，我们可以轻易的控制用户的各种流量。以后可别嘲笑街上低头玩手机的人，人家说不定正在劫持你呢。&lt;/p&gt;
+
+&lt;p&gt;不过，在一些地方例如地铁上面，3G信号很差，难以将热点收到的数据转发出去，因此只能钓鱼无法劫持。这种单机模式是否仍能入侵呢？下篇文章将叙述，如何发起离线钓鱼。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;防范措施&lt;/em&gt;：WiFi 不用就应及时关闭，以免自动连上不安全的热点。对于一些长期不用的连接记录，不如趁早删了吧。&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;安卓热点默认只支持10个用户，在街上开个叫 CMCC 的热点，会发现瞬间就连满了。所以还是把笔记本藏书包里，配几个好点的无线网卡，既隐蔽效果也好。大功率天线虽然很过瘾，但不能过度使用，说不定哪天就被查水表了~&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2&gt;结尾&lt;/h2&gt;
+
+&lt;p&gt;就谈到这里吧，这些只是之前尝试有效的案例，事实上还有太多的途径，要是再算上系统内部的方式那就无数了。但不论如何变化，流量劫持的最终利用方式几乎是如出一辙的 —— 利用它能做些什么呢？终极危害能有多大？&lt;a href=&quot;http://fex.baidu.com/blog/2014/04/traffic-hijack-2/&quot;&gt;请听下回分解&lt;/a&gt;。&lt;/p&gt;
+</description>
+                <pubDate>Wed, 09 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/traffic-hijack</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/traffic-hijack</guid>
+            </item>
+        
+            <item>
+                <title>Mod 与 RequireJS/SeaJS 的那些事</title>
+                <description>作者：walter &lt;br&gt; &lt;p&gt;&lt;em&gt;本文的目的是为了能大让家更好的认识 Mod，之所以引入 RequireJS/SeaJS 的对比主要是应大家要求更清晰的对比应用场景，并不是为了比较出孰胜孰劣，RequireJS 和 SeaJS 都是模块化漫漫之路的先驱者，向他们致敬！&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2&gt;为工程化为生的&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;&lt;/h2&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;模块化是一种处理复杂系统分解成为更好的可管理模块的方式，它可以把系统代码划分为一系列职责单一，高度解耦且可替换的模块，采用模块化可以让系统的可维护性更加简单易得。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;JavaScript 并没有为开发者们提供以一种简洁、有条理地的方式来管理模块的方法。从出发点来看，&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;和 RequireJS/SeaJS 是一致的，为开发者提供一套 JavaScript 模块化开发方案，让 JavaScript 的模块化开发变得更简单自然。但是在实现的过程中却存在巨大着的差异。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;严格上来讲并不是一个独立的模块化框架，它是被设计用做&lt;a href=&quot;http://fis.baidu.com&quot;&gt;前端工程化&lt;/a&gt;模块化方案的 JavaScript 支持，需要和自动化工具、后端框架配合来使用，目的在于希望给工程师提供一个类似 nodeJS 一样的开发体验，同时具备很好的线上性能。&lt;/p&gt;
+
+&lt;p&gt;RequireJS 和 SeaJS 的定位主要是 Web 浏览器端的模块加载器，依靠 JavaScript 运行时来支持模块定义、依赖分析和加载等功能。&lt;/p&gt;
+
+&lt;h2&gt;类 CommonJS 的开发体验&lt;/h2&gt;
+
+&lt;p&gt;RequireJS 遵守的是 AMD 规范，SeaJS 遵守的是 CMD 的规范。AMD/CMD 规范使用的是“异步模块定义”的方式，这种方式给开发带来了极大的不便，所有的同步代码都需要修改为异步的方式，我们是否可以在前端开发中使用“ CommonJS ”的方式，开发者可以使用自然、容易理解的模块定义和调用方式，不需要关注模块是否异步，不需要改变开发者的开发行为。答案当然是肯定的，&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;并不完全遵守 AMD/CMD 规范，也正是为了为开发者提供更简单自然的开发体验。&lt;/p&gt;
+
+&lt;h3&gt;模块定义&lt;/h3&gt;
+
+&lt;p&gt;Mod 使用 define 来定义一个模块：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;define&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;factory&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;factory 提供了 3 个参数：require, exports, module ，用于模块的引用和导出。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;在平常开发中，我们无需关注模块定义，工具会自动对 JS 进行 define 包装处理&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;p&gt;JS 源码&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;c1&quot;&gt;//common/widget/menu/menu.js&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;common:widget/jquery/jquery.js&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;exports&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;init&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.menu-ui ul li a&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;click&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.menu-ui ul li a.active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;removeClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;preventDefault&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;编译后代码&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;define&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;common:widget/menu/menu.js&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;exports&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;module&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;){&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;common:widget/jquery/jquery.js&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;exports&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;init&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.menu-ui ul li a&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;click&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;kd&quot;&gt;var&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;.menu-ui ul li a.active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;removeClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;$&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;).&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;addClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&amp;#39;active&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+            &lt;span class=&quot;nx&quot;&gt;event&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;preventDefault&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;();&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3&gt;模块调用&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;会在模块初始化之前自动加载相关依赖。因此当我们需要一个模块时，只需提供一个模块名即可获取：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;js language-js&quot; data-lang=&quot;js&quot;&gt;&lt;span class=&quot;nx&quot;&gt;require&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;因为所需的模块都已预先加载，因此 require 可以立即(同步)返回该模块引用。&lt;strong&gt;无论在页面的 script 还是模块内部&lt;/strong&gt;，工程师都可以放心通过 require 来加载模块，不需要考虑何时该使用同步接口何时调用异步接口。&lt;/p&gt;
+
+&lt;h2&gt;避免模块化引来的性能问题&lt;/h2&gt;
+
+&lt;p&gt;RequireJS/SeaJS 通过过 JavaScript 运行时来支持“匿名闭包”、“依赖分析”和“模块加载”等功能，“依赖分析”需要在 JavaScript 运行时通过正则匹配到模块的依赖关系，然后顺着依赖链（也就是顺着模块声明的依赖层层进入，直到没有依赖为止）把所有需要加载的模块按顺序一一加载完毕，当模块很多、依赖关系复杂的情况下会严重影响页面性能。&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;通过以下设计避免了如上问题：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;通过工具自动添加 define 闭包，线上不需要支持匿名闭包&lt;/li&gt;
+&lt;li&gt;通过工具自动处理依赖，线上不需要动态处理依赖&lt;/li&gt;
+&lt;li&gt;通过后端模板自动插入 script，线上不需要通过前端框架进行模块加载&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;通过以上设计，&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;极其精简，整个文件只有 100 多行，相比下 RequireJS 有 2000 多行，SeaJS 有将近 1000 行。&lt;/p&gt;
+
+&lt;h2&gt;避免模块化为打包部署带来的极大不便&lt;/h2&gt;
+
+&lt;p&gt;通过 RequireJS/SeaJS 进行模块化开发后，合并静态资源(打包)将变得十分不方便和晦涩难懂，每个文件里只能有一个模块，无论是“ combo 插件”还是“ flush 插件”，都需要我们修改模块化调用的代码，这无疑是雪上加霜，工程师不仅需要在开发的时候关注模块定义，在调用的时候还需要关注在一个请求里面加载哪些模块比较合适，模块化的初衷是为了提高开发效率、降低维护成本，但我们发现这样的模块化方案实际上并没有降低维护成本，某种程度上来说使得整个项目更加复杂了。而使用 Mod，工程师只需要在配置文件配置合并策略即可，并不需要关注其他细节，&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;会自动处理好依赖以及合并信息并在模块初始化之前将模块的静态资源以及所依赖的模块加载并准备好。&lt;/p&gt;
+
+&lt;h2&gt;自适应的性能优化&lt;/h2&gt;
+
+&lt;p&gt;整个&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;模块化流程如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fis-modjs-requirejs-seajs/framework.png&quot; alt=&quot;framework&quot;&gt;&lt;/p&gt;
+
+&lt;p&gt;通过自动化工具对模块进行编译处理，包括对对 JavaScript 模块添加闭包、记录每个静态资源的部署路径以及依赖关系并生成资源表(resource map),如下所示，&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;json language-json&quot; data-lang=&quot;json&quot;&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;res&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/js/demo_33c5143.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;p0&amp;quot;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;index.html&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/index.html&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;html&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;script.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/js/script_32300bf.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;p0&amp;quot;&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+        &lt;span class=&quot;nt&quot;&gt;&amp;quot;pkg&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;nt&quot;&gt;&amp;quot;p0&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;uri&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;/static/pkg/aio_5bb04ef.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&amp;quot;js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;has&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.js&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;script.js&amp;quot;&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+                &lt;span class=&quot;nt&quot;&gt;&amp;quot;deps&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+                    &lt;span class=&quot;s2&quot;&gt;&amp;quot;demo.css&amp;quot;&lt;/span&gt;
+                &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+            &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;所有被打包的资源会有一个 pkg 属性 指向该表中的资源，而这个资源，正是我们配置的打包策略。有了这些信息，我们可以通过 Mod 框架(Mod 和后端框架)来管理和控制模块的加载。&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;的模块化可以十分灵活的适应各种性能优化场景，我们还可以通过监控模块的调用情况，自动生成最优的打包配置，让网站可以自适应优化。&lt;/p&gt;
+
+&lt;h2&gt;总结&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/fex-team/mod&quot;&gt;Mod&lt;/a&gt;提供的是一体化的模块化解决方案，更多的是从工程化、自动化的角度去考虑，RequireJS/SeaJS 更独立灵活。&lt;/p&gt;
+
+&lt;h2&gt;相关阅读&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/fex-team/fis-plus/blob/master/doc/widget.md&quot;&gt;How to Develop With Widgets&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/fex-team/fis-plus/blob/master/doc/pack-configuration.md&quot;&gt;Concat Files And Manage Dependencies Automatically&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/fex-team/fis-plus/blob/master/doc/compilation%20plugin.md&quot;&gt;A Toolset For Production&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <pubDate>Wed, 02 Apr 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/04/fis-modjs-requirejs-seajs</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/04/fis-modjs-requirejs-seajs</guid>
+            </item>
+        
+            <item>
+                <title>八卦某 G 的前端开发方式及流程</title>
+                <description>作者：nwind &lt;br&gt; &lt;blockquote&gt;
+&lt;p&gt;他山之石，可以攻玉。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;话说本人从毕业到现在一直在某 B 公司工作，前些年折腾过不少开发方式和工具，但总觉得或许有更好的方案，所以很好奇其它公司内部是如何工作的，我曾经浏览过某 Y 公司内部无所不包的 TWiki，也拜访过某 F 总部了解他们的开发流程，但对某 G 公司却了解不多，只零零碎碎知道一些，这两天抽空梳理了之前收集到的各种资料，希望能给 FEX 后续改进提供参考。&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;注意：以下内容主要信息来自网上收集、&lt;a href=&quot;www.amazon.com/In-The-Plex-Google-Thinks/dp/1455875724&quot;&gt;『In The Plex』&lt;/a&gt;这本书及闲聊，纯粹为了技术交流和讨论，仅代表个人观点，本人从未在某 G 工作过，不受 &lt;a href=&quot;http://en.wikipedia.org/wiki/Non-disclosure_agreement&quot;&gt;NDA&lt;/a&gt; 限制，但大部分信息无法确认真伪，加上某 G 很大，每个部门都有可能不一样，所以这里的信息也是比较片面的，欢迎大家提供更多参考信息。&lt;/em&gt;&lt;/p&gt;
+
+&lt;h2&gt;分工协作&lt;/h2&gt;
+
+&lt;p&gt;首先，某 G 大部分产品线都不区分前端工程师和后端工程师，一个人需要用从前到后都负责开发，尽管这几年似乎有变化，能看到专门的 &lt;a href=&quot;https://www.google.com/about/careers/search/#t=sq&amp;amp;q=j&amp;amp;d=Front+End&amp;amp;li=10&amp;amp;j=Front+End&amp;amp;&quot;&gt;Front End&lt;/a&gt; 职位了，但应该是很少数产品线的做法。&lt;/p&gt;
+
+&lt;p&gt;N 年前有人去 G 面试过，和他闲聊后了解到某 G 要求应聘者必须至少要会 C++ 和 Java 中的一种，只会 Python/PHP 是不够的，要是只懂 JS 就更不行了。这个信息很关键，能用来解释一些内部现象，后面我会提到。&lt;/p&gt;
+
+&lt;p&gt;我个人认为前端工程师确实应该了解基本的后端知识，某 B 公司以前很多前端工程师都只负责模板（比如 Smarty）开发，这导致一个很严重的问题，那就是前端工程师往往不知道如何搭建环境，开发时需要依赖后端工程师提供环境和数据，严重影响了开发效率，这也是为什么 FIS 还内嵌了本地服务功能。&lt;/p&gt;
+
+&lt;p&gt;另外国内有公司还对前端工程师做进一步细分，按照职能分为写 HTML/CSS 和 JS 的，对于我所属的团队，我个人并不赞同这种做法，因为 HTML 和 JS 是密切相关的，这样分工将不利于代码管理与优化，尤其是交互复杂的页面，因为 JS 很依赖 HTML，拆分反而增加沟通成本，但或许在重运营的网站这么做会更好。&lt;/p&gt;
+
+&lt;h2&gt;代码管理方法&lt;/h2&gt;
+
+&lt;p&gt;以下是一些零碎了解到的几点：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;内部所有人都能看到代码&lt;/strong&gt;
+
+&lt;ul&gt;
+&lt;li&gt;据说在 09 年时某国家的 office 有例外（来自『In The Plex』第 6 章，内容比较不和谐，这里就不展开了）&lt;/li&gt;
+&lt;li&gt;提交代码需要相关人员的 review&lt;/li&gt;
+&lt;li&gt;这使得某 G 内部工程师可以很方便地切换项目，很少一个人只负责一个项目&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;代码只有最新版(trunk)&lt;/strong&gt;，没有 release 版本，没有版本号
+
+&lt;ul&gt;
+&lt;li&gt;一般大家喜欢新增接口&lt;/li&gt;
+&lt;li&gt;如果要修改原有的接口，就必须通知所有使用方，不过因为所有人都能看到所有代码，所以很容易找到有谁使用&lt;/li&gt;
+&lt;li&gt;据了解某 F 也是这样的&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;有个代码的搜索引擎&lt;/strong&gt;
+
+&lt;ul&gt;
+&lt;li&gt;估计和下线的 Code Search 比较像（好像还是某高管写的，不过我忘记在哪看到的了）&lt;/li&gt;
+&lt;li&gt;如果想使用某个基础库，最好的方法是搜索使用到这个库的相关代码，抄过来
+
+&lt;ul&gt;
+&lt;li&gt;我认为这种方式比让工程师写文档靠谱多了，因为绝大部分调用这个库的代码都是相似的，所以直接给出例子能让别人更容易上手&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;代码依赖是通过全局的方式统一管理的&lt;/strong&gt;
+
+&lt;ul&gt;
+&lt;li&gt;我猜应该很类似 Chromium 中的 &lt;a href=&quot;https://code.google.com/p/gyp/&quot;&gt;GYP&lt;/a&gt;，熟悉 node 的同学可以理解为 npm，不过是支持多语言的&lt;/li&gt;
+&lt;li&gt;之前在某 G 工作过的 iOS 工程师也在&lt;a href=&quot;https://news.ycombinator.com/item?id=5001830&quot;&gt;某篇后来删除的文章&lt;/a&gt;中透露代码中不放 Xcode 项目文件，而是由工具生成出来（话说这篇文章挺有价值的，可惜老外不喜欢转帖，导致现在找不到了）&lt;/li&gt;
+&lt;li&gt;这种依赖管理方式让人想起某 A 公司（卖书那个，不是卖水果的）内部完善的 SOA 机制，不过某 A 喜欢基于 service 来重用，而某 G  看起来喜欢代码级别的重用&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;很少使用第三方库&lt;/strong&gt;
+
+&lt;ul&gt;
+&lt;li&gt;只能选用内部维护的版本，比如类似这个 &lt;a href=&quot;https://code.google.com/p/google-mysql/&quot;&gt;MySQL&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;会将第三方库的编译工具改成内部的，比如 Chromium 中都改成 GYP 方便管理&lt;/li&gt;
+&lt;li&gt;据说想申请用某个新第三方库需要审核，周期比较长&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;代码管理软件用的 Perforce&lt;/strong&gt;
+
+&lt;ul&gt;
+&lt;li&gt;某 G 直接将这个公司买下了（未确认，但下面那篇论文是在某 G 网站上的，所以我感觉消息可靠），Perforce 的员工为某 G 内部定制了一套代码管理工具&lt;/li&gt;
+&lt;li&gt;另外我找到一篇 &lt;a href=&quot;http://research.google.com/pubs/archive/39983.pdf&quot;&gt;Perforce 的性能优化的论文&lt;/a&gt;，这里面透露了很多 G 公司内部的代码情况（发表时间是 2011 年 5 月），以下信息取自这篇论文：
+
+&lt;ul&gt;
+&lt;li&gt;这个程序用了 17 年，有 2 千万次 changelist（可以理解就是 ci 数量）&lt;/li&gt;
+&lt;li&gt;最大的 client 有 6 百万个文件（应该绝大部分是数据吧，要知道 chromium 项目也就不到 30 万个文件）&lt;/li&gt;
+&lt;li&gt;文档及相关数据文件也放上面&lt;/li&gt;
+&lt;li&gt;Reivew 工具叫 Mondrian（确认就是 &lt;a href=&quot;https://developers.google.com/appengine/articles/rietveld?csw=1&quot;&gt;Rietveld&lt;/a&gt; 的前身）&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;整体来说某 G 的代码管理方式有很多可取之处，尤其是代码开放，能最大程度地调动开发人员的主动性与协作意识，从而创造出更大的价值。不过没有版本管理这点是个双刃剑，我也没想好是否这样会更好。&lt;/p&gt;
+
+&lt;h3&gt;feature flag&lt;/h3&gt;
+
+&lt;p&gt;因为没有分支，代码只有一份，所以要实验新功能就得通过 flag 来控制的，这个 flag 由线上 Borg 系统来管理，能做到针对某一部分的 Cookie 开启不同的 feature，方便进行对比抽样。&lt;/p&gt;
+
+&lt;p&gt;如果某个功能最终不上线，后续需要手工删除相关代码。&lt;/p&gt;
+
+&lt;p&gt;这个 flag 开关功能在某 F 也有，我认为这是大型网站是必备功能，但需要注意，这个系统本身会成为关键节点，之前某 F 的类似系统挂过，直接导致整个网站大部分功能都关闭了，所以一旦出问题后果很严重。&lt;/p&gt;
+
+&lt;h3&gt;严格的代码检查&lt;/h3&gt;
+
+&lt;p&gt;据说某 G 工程师大部分时间在写单元测试，单元测试可以保证 UI 无关代码的质量，但对于页面测试就很难了，虽然可以使用 selenium，但某 G 内部大家都不愿意写，我个人认为这个问题确实无解，页面随便一改就导致大量测试失效，我还没见任何一家公司解决（某 F 说他们用的是 Watir，但主要用于保证登录等基本功能可用），目前看来唯一可行的就是自动页面截图 diff，&lt;a href=&quot;http://velocityconf.com/velocity2013/public/schedule/detail/28452&quot;&gt;某 G 在 Consumer Surveys 这个产品中也在尝试&lt;/a&gt;。&lt;/p&gt;
+
+&lt;p&gt;据说某 G 的项目大多没有严格的上线时间点，所以不能以项目紧急为借口来不写单元测试，这点和天朝不太一样，大家更倾向牺牲质量来追求速度。&lt;/p&gt;
+
+&lt;p&gt;另外国外公司一般对浏览器兼容性问题都不怎么关注，因为现代浏览器中的兼容性问题比以前好得多，这点某 G 和某 F 公司一样，只支持高版本的 IE。&lt;/p&gt;
+
+&lt;p&gt;因为只有主干，所以提交代码很谨慎，需要经过 3 个主要阶段：&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;代码风格检查
+
+&lt;ul&gt;
+&lt;li&gt;应该主要参考&lt;a href=&quot;https://code.google.com/p/google-styleguide/&quot;&gt;这个文档&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;非常严格，据说还会检查命名什么的&lt;/li&gt;
+&lt;li&gt;有段子说 Python 作者 Guido van Rossum 写的 Python 代码无法通过检查，所以一直没提交。。。我认为这是假的，因为他老人家写的 &lt;a href=&quot;https://code.google.com/p/rietveld&quot;&gt;rietveld&lt;/a&gt; 还是挺符合某 G 规范的&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;单元测试检查&lt;/li&gt;
+&lt;li&gt;代码 owner 的 Review&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;提交一旦出错可能会导致影响其它人的工作（因为每个人都依赖主干啊），甚至遭到其它国家 office 工程师的指责，所以大家对于代码提交都非常谨慎，再三确认，压力不小。&lt;/p&gt;
+
+&lt;p&gt;在单元测试、代码风格和 review 的执行上，某 G 做得很彻底，这点值得学习，国内大家似乎更喜欢开发效率而不是质量。&lt;/p&gt;
+
+&lt;h2&gt;前端如何开发&lt;/h2&gt;
+
+&lt;p&gt;除了 Gmail、Maps、Plus 这样的特例，基本上都是由后端模板生成页面，很少项目使用 JS 来写界面，更少使用 MVC 框架，这点其实在很多公司都差不多，比如某 B 也是一样的，除了地图及广告管家等产品，其它产品基本上都是通过模板生成的。&lt;/p&gt;
+
+&lt;p&gt;某 G 的页面是通常是由 Java 或 C++ 语言所写的模版引擎生成的，而且开源出来了，分别是 &lt;a href=&quot;https://developers.google.com/closure/templates/&quot;&gt;Closure Templates&lt;/a&gt; 和 &lt;a href=&quot;https://code.google.com/p/ctemplate/&quot;&gt;CTemplate&lt;/a&gt;，话说某 B 在几年前也自己写了个 C++ 的模板引擎，但目前基本被淘汰了。&lt;/p&gt;
+
+&lt;p&gt;对某 G 来说，「前端」工程师要写 Java 和 JavaScript，而「后端」服务主要是 C++（某些地方开始使用 Go 了，&lt;a href=&quot;http://matt-welsh.blogspot.com/2013/08/rewriting-large-production-system-in-go.html&quot;&gt;比如这个&lt;/a&gt;）。&lt;/p&gt;
+
+&lt;p&gt;前面说到招人时都要会 Java，这带来的结果是大多数团队成员更了解 Java 而不是 JavaScript，于是在这种背景下很自然地诞生了 &lt;a href=&quot;http://www.gwtproject.org&quot;&gt;GWT&lt;/a&gt; 这个神奇的东西，它在内部很多地方使用，按照内部人士的说法，主要的考虑是：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;能自动生成跨浏览器浏览器代码&lt;/li&gt;
+&lt;li&gt;结构规范，通过编译器就能提前发现很多问题&lt;/li&gt;
+&lt;li&gt;能使用强大的 IDE 来提高效率（重构、自动完成、方便跳转到定义等）&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;对于专业做前端的同学，看到 GWT 多半不喜欢，感觉就是多此一举，但如果是 Java 出身的工程师其实是很容易接受的，尤其是对于习惯了 Java 的代码组织方式及强类型语言的人，反而会很不习惯 JavaScript 这种弱类型的语言，觉得太难控制太容易出错了，比如拿到一个变量，在 Java 代码中通过它的类型就能知道它的数据结构，但 JavaScript 就不行了，只能在运行时 &lt;code&gt;console.dir&lt;/code&gt; 出来或找相关实现的代码，从我个人体会来看，对于陌生代码，JavaScript 版本的理解难度要明显高于 Java 版本。&lt;/p&gt;
+
+&lt;p&gt;话说某 G 曾经弄过一个叫 Wave 的产品，后来产品失败后就将代码&lt;a href=&quot;http://incubator.apache.org/wave/source-code.html&quot;&gt;开源出来了&lt;/a&gt;，我认为这个代码能反应出 G 内部在使用 GWT 时的开发风格，我用 &lt;a href=&quot;http://cloc.sourceforge.net/&quot;&gt;cloc&lt;/a&gt; 统计了一下它的代码情况，结果如下：&lt;/p&gt;
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;text language-text&quot; data-lang=&quot;text&quot;&gt;----------------------------------------------------------
+Language        files       blank      comment        code
+----------------------------------------------------------
+Java             2329       50121       139226      245856
+Python             34        1308         2537        4451
+CSS                57         617         1670        2791
+XML               148        1009         2627        2487
+Ant                15         131          335         987
+HTML                8         124          155         831
+Bourne Shell        9          61          190         185
+Javascript          1          12           26          56
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;神奇吧，这么复杂的前端交互应用，只有 1 个 56 行的 JS 文件，而且其实这个 JS 还是无关紧要的，所以你可以理解为什么某 G 只招懂 Java 或 C++ 的工程师了吧。&lt;/p&gt;
+
+&lt;p&gt;后来某 G 的 Lars Bak 大神推出了 Dart，在我看来就是用来取代 GWT 的，前面说到的 GWT 优点在 Dart 都有，而且在 I/O 2012 有一个演讲题目是 &lt;a href=&quot;https://www.youtube.com/watch?v=EvACKPBo_R8&quot;&gt;Migrating Code from GWT to Dart&lt;/a&gt;，赤裸裸啊。&lt;/p&gt;
+
+&lt;p&gt;另外其实某 G 内部也不是所有人都喜欢 GWT，比如 Plus 就没使用，而是&lt;a href=&quot;http://www.infoq.com/news/2011/07/Google-Plus&quot;&gt;直接基于 Closure 开发&lt;/a&gt;，并使用 Closure template。&lt;/p&gt;
+
+&lt;p&gt;说到 Closure，就不得不提它的起源：Gmail，在 WebApps 2010 会议上，&lt;a href=&quot;https://www.usenix.org/events/webapps10/tech/slides/deboor.pdf&quot;&gt;有篇 PPT 介绍了 Gmail 代码的情况&lt;/a&gt;，以下摘抄其中几个信息：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;2004 年就有 9400 行代码了，还有个 JS 编译器（Closure compiler 的前身）来压缩代码、检查错误等&lt;/li&gt;
+&lt;li&gt;2005 年有 22000 行代码，10000 行注释&lt;/li&gt;
+&lt;li&gt;2006 年有 52000 行代码，23000 行注释，开始使用面向对象，并初步形成 Closure library&lt;/li&gt;
+&lt;li&gt;2007 年重写，代码达到 90000 行，注释居然有 97000 行（太厉害了。。。），开始出现模块化机制，而且出现了 Closure Templates&lt;/li&gt;
+&lt;li&gt;随后开始内部使用，并最终对外推出了 Closure 系列工具&lt;/li&gt;
+&lt;li&gt;演讲人认为 &lt;code&gt;Type-checking is important and possible&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.infoworld.com/d/developer-world/google-executive-frustrated-java-c-complexity-375&quot;&gt;有报道说&lt;/a&gt;在这个会议中演讲人还透露 Gmail service 也是用 JS 写的，代码有 443000 行
+
+&lt;ul&gt;
+&lt;li&gt;对于这个消息，我不确定是否真实，但确实是有可能，08 年时&lt;a href=&quot;http://steve-yegge.blogspot.jp/2008/05/dynamic-languages-strike-back.html&quot;&gt; Stevey Yegge 也说过&lt;/a&gt;某 G 的规范有漏洞，没说 JS 只能用在前端，而且他还真这么做过。&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;最后插一句我的观点：对于我所处的团队及用户类产品来说，GWT 没有意义，而 Dart 虽然比起 GWT 要好得多，但和 JS 交互&lt;a href=&quot;https://www.dartlang.org/articles/js-dart-interop/&quot;&gt;实在太麻烦&lt;/a&gt;，导致它的使用场景很有限，语法有明显变化，使得难以让大部分前端工程师接受（Lars Bak 就在 I/O 2013 上&lt;a href=&quot;https://developers.google.com/events/io/sessions/324431687&quot;&gt;吐槽&lt;/a&gt;工程师太纠结语法，看起来大神在内部推广时肯定遇到不少阻力）。对于类型检查的好处，我个人是比较赞同的，因此我更喜欢 &lt;a href=&quot;http://www.typescriptlang.org/&quot;&gt;TypeScript&lt;/a&gt; 这种增强形方案，因为它可以逐步适应，既有类型支持的优势，又能直接使用现有代码。&lt;/p&gt;
+
+&lt;h2&gt;内部工作流程&lt;/h2&gt;
+
+&lt;p&gt;以下是打听到的某个产品项目开发流程：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;PM 或工程师提出某个想法，UX 做原型 mock&lt;/li&gt;
+&lt;li&gt;PM 申请项目审核（通过率不高）、工程师开发 UX 无关部分&lt;/li&gt;
+&lt;li&gt;工程师完成开发&lt;/li&gt;
+&lt;li&gt;线上小流量实验&lt;/li&gt;
+&lt;li&gt;PM/工程师分析实验结果，完成报告，申请全量上线（通过率不高）
+
+&lt;ul&gt;
+&lt;li&gt;通过数据来证明这个功能是有价值的&lt;/li&gt;
+&lt;li&gt;需要解释这些数据的变化原因&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;分批逐步上线，这个过程中还会有很多审核&lt;/li&gt;
+&lt;li&gt;最终确定是否要上线（通过率不高）&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;一般整个项目周期很长（至少一季度），项目最终上线时间点无法确定，大部分的项目最终都无法正式上线。&lt;/p&gt;
+
+&lt;p&gt;最大的特点是完全靠数据说话，而不是由某个 PM 决定一切，以前有个视觉设计师在离开 G 后就在博客上&lt;a href=&quot;http://stopdesign.com/archive/2009/03/20/goodbye-google.html&quot;&gt;吐槽这点&lt;/a&gt;，他认为这会导致无法进行大胆的界面改版。&lt;/p&gt;
+
+&lt;p&gt;这个流程和我们搜索产品几年前的开发流程很类似，对于成熟的搜索引擎来说这么做确实有它的道理，毕竟随便改个什么都很可能影响收入，当然要十分谨慎了，但这种开发方式并不适合面向用户类的产品，如社区、游戏等，因为开发周期太长了，很容易错过时机。&lt;/p&gt;
+
+&lt;h2&gt;某人一天的工作&lt;/h2&gt;
+
+&lt;p&gt;这里拿 &lt;a href=&quot;http://matt-welsh.blogspot.com/&quot;&gt;Matt Welsh&lt;/a&gt; 来举例介绍一个工程师在某 G 一天的工作，虽然他不是做前端开发的，但他目前在 Chrome 团队负责&lt;a href=&quot;(http://matt-welsh.blogspot.com/2013/04/running-software-team-at-google.html&quot;&gt;移动 Web 性能优化&lt;/a&gt;，所以还是比较相关，而且最重要的是他比较喜欢写博客，有意无意地透露了很多信息，所以我比较好公开谈。&lt;/p&gt;
+
+&lt;p&gt;另外话说他之前还是哈佛的计算机&lt;strong&gt;终身&lt;/strong&gt;教授（！！！），八卦很多，比如&lt;a href=&quot;http://matt-welsh.blogspot.jp/2009/02/how-i-almost-killed-facebook.html&quot;&gt;差点说服小扎同学&lt;/a&gt;不要搞什么社交网络了，还是好好学习拿毕业证书。。。&lt;/p&gt;
+
+&lt;p&gt;这&lt;a href=&quot;http://matt-welsh.blogspot.com/2010/12/day-in-life-of-googler.html&quot;&gt;这篇文章&lt;/a&gt;里，Matt Welsh 介绍他的一天是如何度过的（另外还提到了在哈佛当教授是如何度过的，也很有意思），我摘抄如下：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;9:00，到公司，查邮件&lt;/li&gt;
+&lt;li&gt;9:30-10:15，写代码，增加功能，编写单元测试，发起 changelist 代码 review，喝无糖可乐&lt;/li&gt;
+&lt;li&gt;10:15-11:00，切换 git 分支到其它项目，查看同事 review 代码的结果，回复评论并发新版本 changelist&lt;/li&gt;
+&lt;li&gt;10:00-11:30，再次切换 git 分支，提交一个要运行 3 小时的 MapReduce 任务分析网络延迟日志&lt;/li&gt;
+&lt;li&gt;11:30-12:00，和山景城的团队成员开视频会议&lt;/li&gt;
+&lt;li&gt;12:00-12:35，午餐&lt;/li&gt;
+&lt;li&gt;12:35-14:00，检查邮件，检查 MapReduce 任务运行状态，回复代码 review 的评论，再次提交代码，然后查看任务列表确定接下来的工作&lt;/li&gt;
+&lt;li&gt;14:00-15:00，和在剑桥（有评论指出这里是波士顿的剑桥，不是英国那个）、山景城等多个地区的团队成员开项目会议&lt;/li&gt;
+&lt;li&gt;15:00-16:00，喝红牛，这时 MapReduce 任务已经跑完了，生成图表，分析数据中不符合预期的部分，整理代码，准备下一次 MapReduce&lt;/li&gt;
+&lt;li&gt;16:00-17:00，喝苏格兰威士忌(scotch)并玩吉他英雄(Guitar Hero)&lt;/li&gt;
+&lt;li&gt;17:00，收拾笔记本回家&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;看完后我的几点体会是：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;前面提到的代码只有 trunk 并不准确，当然每个部门确实可能不一样&lt;/li&gt;
+&lt;li&gt;代码 review 做得很认真&lt;/li&gt;
+&lt;li&gt;看起来任务很明确，所以虽然工作时间是 9-5，但效率挺高，这点我最为好奇的，怎么做到将工作安排这么具体？&lt;/li&gt;
+&lt;li&gt;除了写代码，分析数据也是每天的重要工作，具体分析什么可以通过他的&lt;a href=&quot;http://www.mdw.la/pubs&quot;&gt;论文&lt;/a&gt;了解，看得出来是很细致的&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;内部工具&lt;/h2&gt;
+
+&lt;p&gt;2008 年前的内部工具情况可以通过&lt;a href=&quot;http://blogoscoped.com/archive/2008-03-12-n39.html&quot;&gt;这篇文章&lt;/a&gt;和&lt;a href=&quot;http://www.slideshare.net/guestcc91d4/googles-internal-systems&quot;&gt;这个 PPT&lt;/a&gt; 了解，不过之后就不清楚了，看起来很多外部工具都有内部版本(Docs、Mail、Talk、Calendar 等）。&lt;/p&gt;
+
+&lt;p&gt;这里说一下 Chromium 项目中我看到的工具使用情况：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;网站是基于 &lt;a href=&quot;https://sites.google.com&quot;&gt;Sites&lt;/a&gt; 搭建的&lt;/li&gt;
+&lt;li&gt;设计文档喜欢使用 Docs，因为可以在线编辑和评论功能，所以多人协作会很方便&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://codereview.chromium.org/&quot;&gt;https://codereview.chromium.org/&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;在 &lt;a href=&quot;http://groups.google.com/a/chromium.org/group/chromium-discuss&quot;&gt;Groups&lt;/a&gt; 中进行讨论&lt;/li&gt;
+&lt;li&gt;使用 &lt;a href=&quot;https://code.google.com/p/chromium/issues/&quot;&gt;code&lt;/a&gt; 来管理 issues&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://chromium-build.appspot.com/p/chromium/console&quot;&gt;Buildbots&lt;/a&gt; 来进行编译和集成测试&lt;/li&gt;
+&lt;li&gt;搭建了各种检测工具来保证质量，具体细节推荐&lt;a href=&quot;http://www.amazon.com/Google-Tests-Software-James-Whittaker/dp/0321803027&quot;&gt;读这本书&lt;/a&gt;，看完这本书我最大的体会是没什么神奇的东西，完全靠细心的工作&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;可用的石头&lt;/h2&gt;
+
+&lt;p&gt;以下是我认为可以借鉴的地方：&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;源码不分版本，对内部所有人公开
+
+&lt;ul&gt;
+&lt;li&gt;在 FEX 内部已经是这样了，但我们应该推动更广泛的开放与共享&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;严格的代码规范及单元测试机制
+
+&lt;ul&gt;
+&lt;li&gt;FEX 所有项目将接入 Travis CI&lt;/li&gt;
+&lt;li&gt;代码规范及单元测试的强制检查&lt;/li&gt;
+&lt;li&gt;代码 owner 的 review 机制&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;通过实际例子来使用，甚至不用看文档
+
+&lt;ul&gt;
+&lt;li&gt;加强对 demo 及 example 的要求，不能是简单的 hello，而最好是从产品线实际使用案例中抽取出来&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;文档及相关资料和代码放一起
+
+&lt;ul&gt;
+&lt;li&gt;这能保证找起来很方便&lt;/li&gt;
+&lt;li&gt;如果由于种种原因不能放一起，至少也要放链接&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;外部产品有内网版，比如 Docs
+
+&lt;ul&gt;
+&lt;li&gt;典型的 Eating your own dog food&lt;/li&gt;
+&lt;li&gt;在内网提前测试外部产品的新功能，而且一般内部人员都会很积极地吐槽，对产品改进很有帮助&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;li&gt;GWT 的静态检查机制
+
+&lt;ul&gt;
+&lt;li&gt;整理这篇文章时我发现 TypeScript 也已经接近 1.0 版本了，看起来时机快成熟了，后续计划尝试 TypeScript&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <pubDate>Mon, 31 Mar 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/03/G-ossip</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/03/G-ossip</guid>
+            </item>
+        
+            <item>
+                <title>FIS 与 FIS-PLUS 的渊源</title>
+                <description>作者：fansekey &lt;br&gt; &lt;h2&gt;FIS vs FIS+&lt;/h2&gt;
+
+&lt;p&gt;FIS 和 FIS-PLUS(下面简称 FIS+)的概念混淆诞生之初就开始了，用 FIS 的同学一上来就会问“ FIS 和 FIS+ 有什么区别呀?”。鉴于此，大概说一下 FIS 及 FIS+ 的历史及其区别。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;FIS 产生之初定位就是做一个内核，提供一套编译体系以及一套静态资源管理的设计思路及其本地调试。编译体系可以简单通过配置 + 插件的方式任意扩展。&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;FIS+ 就通过扩展实现了一套适合于后端是 PHP+Smarty3 的编译体系，然后在后端实现了静态资源管理，提出了诸如&lt;code&gt;quickling&lt;/code&gt;，&lt;code&gt;i18n&lt;/code&gt;，&lt;code&gt;fis-plus(default)&lt;/code&gt;之类的解决方案。这块值得说明以下的是解决方案&lt;code&gt;fis-plus&lt;/code&gt;其实它和编译体系的命令包取了相同的名字。下面详细说明编译体系和静态资源管理。&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;目录规范&lt;/h3&gt;
+
+&lt;p&gt;整个编译体系还有很大一块内容是目录规范，还有一块是以文件类型为基础的插件体系。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;FIS 是没有目录规范的，你源码怎么放产出也怎么放&lt;/li&gt;
+&lt;li&gt;FIS+ 有一套成型的目录规范，规定了 js 怎么放，css 怎么放，以及模块如何划分，模块之间如何引用资源，如何引入 js 等等。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;插件&lt;/h3&gt;
+
+&lt;p&gt;当然为了满足后端 php+smarty3 的以及静态资源管理，FIS+ 提供了一些插件。比如 extlang，require-async 用来分析被标签{script}{/script}包裹的 js，smarty-xss 是用来自动 XSS 转义的等。&lt;/p&gt;
+
+&lt;p&gt;说到这里在整个编译体系，FIS+ 扩展了 FIS，可以比喻成长方形和正方形的关系。&lt;/p&gt;
+
+&lt;h3&gt;框架(静态资源管理)&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;FIS 提供了一套思路，用产出的 map.json 作为实现的基础，但它没有做实现&lt;/li&gt;
+&lt;li&gt;FIS+ 里面真正实现了这个思路，引出了后面诸多解决方案以及自动打包&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3&gt;本地调试&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;FIS 集成了一个本地调试服务器，小巧劲爆。解决了一切不会搭建服务器以及感觉搭建服务器费时费事的同学的所有需求&lt;/li&gt;
+&lt;li&gt;FIS+ 扩展自 FIS，额外提供了本地数据模拟，URL 模拟转发（小路由），以及能够提供本地跑起项目的测试框架（别被这个字眼吓到，就是一个 display 模板功能）&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;当然这个思路也包含在 FIS 的集体架构中，参见&lt;a href=&quot;https://github.com/fex-team/fis/wiki/%E4%BB%80%E4%B9%88%E6%98%AFF.I.S&quot;&gt;什么是 FIS&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3&gt;综述&lt;/h3&gt;
+
+&lt;p&gt;FIS+ 之于 FIS 是一个针对业务场景在编译工具、框架层面进行扩建,适用于后端是 php/smarty 的架构体系。而如果后端是 Java 亦或是 Python，那么可以像 FIS+ 这样扩展 FIS，扩展一整套的方案，可以叫 fis-java，fis-python 疑惑其他。整个定制的过程文档，都会在 FIS 官网扩展一栏相继推出。当然 FIS 小组后续也会推出不同后端架构下的成套方案。&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;如果说 fis 是 webkit 的话，fis-plus 就是 chrome&lt;/li&gt;
+&lt;li&gt;如果说 fis 是 android 的话, fis-plus 就是 miui&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;fis-plus is a distribution of fis. You can think of fis as the engine that powers fis-plus, similar to how WebKit is the engine that powers Chrome or Safari. (Browser geeks, please allow me the affordance of this analogy and I ’ ll buy you a beer later.)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/fis-plus/struct.png&quot; alt=&quot;struct&quot;&gt;&lt;/p&gt;
+
+&lt;h3&gt;编外话&lt;/h3&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;为啥会给大家带来这么大的困惑呢？&lt;/p&gt;
+
+&lt;p&gt;主要的原因是名字取的不好，其实 fis-plus 的前身叫 fis-pc，随着业务的发展 fis-pc 不单单能满足 PC 的各种需求，连无线都包揽，这样依赖不得不改名字了。为了向下兼容（fis-pc 时代命令行就是 fisp）。就拍脑袋叫 fis-plus 了。大概寓意是作为第一个官方定制版的意思。如果取名为 orra，trigger，secret，boluo，nana 之类的就不会有这个问题了&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;为啥 FIS 官网开始宣传 FIS+ 了呢？&lt;/p&gt;
+
+&lt;p&gt;受到上一个问题的影响，FIS-PLUS 也要开源，总不能同时维护一个 FIS 一个 FIS-PLUS 的官方网站吧。这样一来带给内部人员困惑给外部人员也是个困惑。虽然可以说明，但依然少不了需要重复说明的囧况。而且，如果没有静态资源管理这套方案，真的无法体现 FIS 的无比强大。正如官网提到，不管你用 grunt 也好，用 gulp 也好，用 make 也好只要实现了 FIS 说到的那几块，那么它就是一个 FIS。&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;其他感想&lt;/p&gt;
+
+&lt;p&gt;假设 FIS 起初就是一个 kernel，无法跑起来，需要通过扩展的 FIS+ 才能跑起来会不会让大家更好理解。比如 pngquant 的图片压缩库 libimagequant 。&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+                <pubDate>Wed, 26 Mar 2014 00:00:00 +0800</pubDate>
+                <link>http://fex.baidu.com/blog/2014/03/fis-plus</link>
+                <guid isPermaLink="true">http://fex.baidu.com/blog/2014/03/fis-plus</guid>
+            </item>
+        
+    </channel>
+</rss>

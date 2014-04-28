@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="实时协同编辑的实现_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="实时协同编辑的实现,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>实时协同编辑的实现 FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+                <img src="/img/avatar/nwind.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">实时协同编辑的实现</h1>
+            <div class="author">nwind | 21 Apr 2014</div>
+        </div>
+
+        <div class="content">
+        <p>在最近某个项目中打算使用协同编辑来解决冲突问题，因此抽空调研了现有的实现方案，结果发现要想做完美是很难的，但我们可以低成本地做到不错的效果，本文将介绍几种实现方法，大家在项目中如果有需要可以参考。</p>
+
+<h2>什么是实时协同编辑</h2>
+
+<p>这里所说的实时协同编辑，是指多人同时编辑一个文档，最典型的例子是 Google Docs，你可以实时看到别人做出的修改，不用手动刷新页面。</p>
+
+<p>要实现实时编辑，我们需要解决两个技术点：实时通信问题、编辑冲突问题，其中实时通信问题比较好解决，可以使用 long pull 或 WebSocket，所以这里就不过多讨论了，重点将放在如何解决编辑冲突问题上。</p>
+
+<h2>可选方案</h2>
+
+<p>接下来将从易至难的顺序来介绍几种可行的方案，分别是：「编辑锁」、「GNU diff-patch」、「Myer&#39;s diff-patch」、「Operational Transformation」和「分布式 Operational Transformation」。</p>
+
+<h3>编辑锁</h3>
+
+<p>编辑锁这是实现协同编辑最简单的方法，简单来说就是当有人在编辑某个文档时，系统会将这个文档锁定，避免其他人同时编辑，因为实现简单，所以这个方案是应用最广的，比如公司内部常用的 TWiki 系统，采用这种方式虽然可以在一定程度上避免覆盖问题，但它的使用体验不好，也做不到「实时」，所以这里就不讨论了。</p>
+
+<h3>GNU diff-patch</h3>
+
+<p>Git 等版本管理软件其实也是一种协同编辑工具，因为每个人都可以并行编辑，遇到编辑同一个文件时可以自动合并，因此我们也能使用类似的原理来实现协同编辑，具体可以有两种方法：diff-patch 和 merge。</p>
+
+<p>先说 diff-patch，这里的 diff 和 patch 是指两个 unix 下的命令，diff 能输出两个文本的不同之处，然后用 patch 来更新其它文件，我们只要在 JS 中实现这两个算法，就能通过如下流程来实现协同编辑：</p>
+
+<ol>
+<li>每个用户进来时都建立长连接，保存好当前文档副本</li>
+<li>有人编辑时，如果停顿 5 秒（具体要根据产品策略），就将现有文档和之前的副本进行 diff，将结果传给服务端，更新副本</li>
+<li>服务端更新文档，然后通过长连接将这个 diff 结果发给同时在编辑的其它用户，这些用户使用 patch 方法来更新 ta 们文档</li>
+</ol>
+
+<p>但 GNU diff 有个问题，因为基于行匹配的，所以很容易冲突，让我们测试一下「百度 Web」和「百度 Web 前端」这两段文本的 diff 结果</p>
+<div class="highlight"><pre><code class="console language-console" data-lang="console"><span class="go">[nwind@fex ~]$ diff old.txt other-new.txt &gt; old-to-other-new.patch</span>
+<span class="go">[nwind@fex ~]$ cat old-to-other-new.patch</span>
+<span class="go">1c1</span>
+<span class="go">&lt; 百度 Web</span>
+<span class="go">---</span>
+<span class="gp">&gt;</span> 百度 Web 前端
+</code></pre></div>
+<p>在这个 diff 结果中，<code>1c1</code> 的第一个「1」代表修改前的第一行，后面的「c」代表「修改」，第二个「1」代表修改后的行，也就是说将第一行的「百度 Web」改成「百度 Web 前端」，修改后的内容放第一行。也就意味着如果两人同时修改一行就会冲突，可以通过下面的测试来确认：</p>
+<div class="highlight"><pre><code class="console language-console" data-lang="console"><span class="go">[nwind@fex ~]$ cat my-new.txt</span>
+<span class="go">Web</span>
+
+<span class="go">[nwind@fex ~]$ patch my-new.txt &lt; old-to-other-new.patch</span>
+<span class="go">patching file b-new.txt</span>
+<span class="go">Hunk #1 FAILED at 1.</span>
+<span class="go">1 out of 1 hunk FAILED -- saving rejects to file my-new.txt.rej</span>
+
+<span class="go">[nwind@fex ~]$ cat my-new.txt.rej</span>
+<span class="go">***************</span>
+<span class="go">*** 1</span>
+<span class="go">- 百度 Web--- 1 -----</span>
+<span class="go">+ 百度 Web 前端</span>
+</code></pre></div>
+<p>其中 <code>my-new.txt</code> 是我修改的版本，我去掉了前面的「百度 」，只留下「Web」，其实这两处修改是不冲突的，它们可以合并成「Web 前端」，如下图所示</p>
+
+<p><img src="/img/realtime-collaboration/merge.png" alt="merge"></p>
+
+<p>但使用 patch 命令部下，它在冲突后会生成一个新文件 <code>my-new.txt.rej</code> 来描述失败原因，这种展现方式不直观，需要打开两个文件比对，我们使用另一种方式来更好地展现，那就是接下来介绍的 merge 命令，它的使用方法如下：</p>
+<div class="highlight"><pre><code class="console language-console" data-lang="console"><span class="go">[nwind@fex ~]$ merge my-new.txt old.txt other-new.txt</span>
+<span class="go">merge: warning: conflicts during merge</span>
+
+<span class="go">[nwind@fex ~]$ cat my-new.txt</span>
+<span class="go">&lt;&lt;&lt;&lt;&lt;&lt;&lt; my-new.txt</span>
+<span class="go">Web=======</span>
+<span class="go">百度 Web 前端&gt;&gt;&gt;&gt;&gt;&gt;&gt; other-new.txt</span>
+</code></pre></div>
+<p>可以看到它直接将冲突的地方写到 <code>my-new.txt</code> 里了，这点比 patch 看起来要方便些，对于这个结果估计大部分同学都会眼熟，因为 merge 命令和 Git 等工具<a href="https://github.com/git/git/blob/master/Documentation/git-merge.txt#L211">中的合并算法是一样的</a>。</p>
+
+<p>通过使用我们可以发现 merge 命令有个缺点，那就是需要使用 3 份完整的文本来进行比较，为了避免每次传递所有文本内容，我们可以结合使用 diff 来减小传输体积，在后端 patch 成新的文本。</p>
+
+<p>无论是 diff 还是 merge，由于它们的算法都是基于行进行比较，导致对同一行的编辑必然冲突，为了解决这个问题，我们可以尝试基于字符粒度的 diff 算法，那就是接下来将介绍的 Myer&#39;s diff-patch。</p>
+
+<h3>Myer&#39;s diff-patch</h3>
+
+<p><a href="http://neil.fraser.name/software/diff_match_patch/myers.pdf">Myer 算法</a>是另一种 diff-patch 算法，它有很多<a href="https://code.google.com/p/google-diff-match-patch/">语言的开源实现</a>，这里我们就不介绍细节算法了，直接用之前的例子来测试它的效果，首先看一下它的 diff 结果，调用代码如下：</p>
+<div class="highlight"><pre><code class="javascript language-javascript" data-lang="javascript"><span class="kd">var</span> <span class="nx">old_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 前端&quot;</span><span class="p">;</span>
+
+<span class="kd">var</span> <span class="nx">dmp</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">diff_match_patch</span><span class="p">();</span>
+<span class="kd">var</span> <span class="nx">patch_list</span> <span class="o">=</span> <span class="nx">dmp</span><span class="p">.</span><span class="nx">patch_make</span><span class="p">(</span><span class="nx">old_text</span><span class="p">,</span> <span class="nx">new_text</span><span class="p">);</span>
+<span class="nx">patch_text</span> <span class="o">=</span> <span class="nx">dmp</span><span class="p">.</span><span class="nx">patch_toText</span><span class="p">(</span><span class="nx">patch_list</span><span class="p">);</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nb">decodeURI</span><span class="p">(</span><span class="nx">patch_text</span><span class="p">))</span>
+</code></pre></div>
+<p>输出结果为</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">@@ -1,6 +1,9 @@
+ 百度 Web
++ 前端
+</code></pre></div>
+<p>其中第一行的 <code>-</code> 和 <code>+</code> 两个符号没有什么意义，这句话表示修改处之前的起始位置为 1（由于数组是从 0 开始的，所以内部计算时会先减一），长度为 6，后面的 <code>1,9</code>，表示修改后的起始位置为 1，长度为 9。在接下来的两段文本代表修改的地方，注意「百度 Web」前面有空格，这代表相等，也就是直接添加这个字符串，而后面的 <code>+</code> 代表添加文本，具体细节可以通过它的<a href="https://code.google.com/p/google-diff-match-patch/source/browse/trunk/javascript/diff_match_patch_uncompressed.js#2100">实现源码</a>了解。</p>
+
+<p>因此确定它的 diff 策略是基于字符匹配的，这样能否解决我们之前遇到的冲突问题呢？接下来来测试一下，源码如下：</p>
+<div class="highlight"><pre><code class="javascript language-javascript" data-lang="javascript"><span class="c1">//相关代码同上</span>
+<span class="kd">var</span> <span class="nx">patches</span> <span class="o">=</span> <span class="nx">dmp</span><span class="p">.</span><span class="nx">patch_fromText</span><span class="p">(</span><span class="nx">patch_text</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">results</span> <span class="o">=</span> <span class="nx">dmp</span><span class="p">.</span><span class="nx">patch_apply</span><span class="p">(</span><span class="nx">patches</span><span class="p">,</span> <span class="s2">&quot;Web&quot;</span><span class="p">);</span>
+
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span> <span class="c1">//Web 前端</span>
+</code></pre></div>
+<p>这个输出结果是正确的，也就是说它能很好地解决之前的问题，但如果是同一个位置的修改会怎样？我继续做了几个实验：</p>
+<div class="highlight"><pre><code class="javascript language-javascript" data-lang="javascript"><span class="kd">var</span> <span class="nx">old_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">other_new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 后端&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">my_new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 前端&quot;</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="c1">//结果为「百度 Web 前端 后端」</span>
+
+<span class="o">===</span>
+<span class="kd">var</span> <span class="nx">old_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 前端&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">other_new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 后端&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">my_new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web 全端&quot;</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="c1">//结果为「百度 Web 后端」</span>
+
+<span class="o">===</span>
+<span class="kd">var</span> <span class="nx">old_text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">other_new_text</span> <span class="o">=</span> <span class="s2">&quot;Web 前端&quot;</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">my_new_text</span> <span class="o">=</span> <span class="s2">&quot;百度 FE&quot;</span><span class="p">;</span>
+<span class="c1">//结果为「FE 前」 </span>
+</code></pre></div>
+<p>第一个例子是在后面添加不同的字符，它的结果是两个添加都生效，第二个例子是在同一处修改成不同的字符，它的结果是别人的修改生效，但最后一个例子出错了，丢失了「端」字，这里看起来还好，但如果内容是富文本就有问题了，比如 <code>&lt;b&gt;</code> 少了 <code>&gt;</code> 是不行的。</p>
+
+<p>整体来看 Myer 算法可以低成本地解决大部分问题，所以有些在线编辑器选择它来实现协同编辑功能，比如 <a href="http://codebox.io">codebox</a>，它的客户端代码<a href="https://github.com/FriendCode/codebox/blob/master/client/utils/filesync.js">在这</a>，服务端代码<a href="https://github.com/FriendCode/codebox/blob/master/core/cb.files.sync/models/document.js">在这</a>。</p>
+
+<p>不过 Myer 在某些情况下会丢字符，是否还有更好的方法？答案是有，那就是接下来介绍的 Operational Transformation 技术。</p>
+
+<h3>Operational Transformation</h3>
+
+<p>Operational Transformation（下面简称 OT）技术正是 Google Docs 中所采用的方案，因此是经过验证的，值得研究。</p>
+
+<p>最开始我一直觉得 OT 会很复杂，因为它的相关介绍文章都写得很长，比如<a href="http://www3.ntu.edu.sg/home/czsun/projects/otfaq/">这篇</a>及维基百科上的<a href="http://en.wikipedia.org/wiki/Operational_transformation">介绍</a>，不过看了之后才后发现它的原理并不复杂，我将在这里进行简单的说明。</p>
+
+<p>首先，我们可以将文本内容修改转成以下 3 种类型的操作(Operational)：</p>
+
+<ul>
+<li>retain(n)：保持 n 个字符，也就是说这 n 个字符不变</li>
+<li>insert(str)：插入字符 str</li>
+<li>delete(str)：删除字符 str</li>
+</ul>
+
+<p>举个例子，假设 A 用户将「百度 Web」变成「Web 前端」，相当于产生了如下 3 个操作：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">delete(&#39;百度 &#39;),  //删掉「百度 」
+retain(3),       //跳过 3 个字符（也就是「Web」）
+insert(&#39; 前端&#39;)   //插入「 前端」
+</code></pre></div>
+<p>提取这些操作可以通过 Levenshtein distance（编辑距离）算法来实现。那它如何解决冲突问题了？比如这时如果 B 用户将「百度 Web」改成了「百度 FE」，B 所生产的操作步骤将会是如下：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">retain(3),       //跳过 3 个字符（也就是「百度 」）
+delete(&#39;Web&#39;),
+insert(&#39;FE&#39;)
+</code></pre></div>
+<p>如果我们先应用 A 的操作，将字符串变为「Web 前端」，然后再应用 B 的操作时就会失效，因为在执行 B 的第二个操作 <code>delete(&#39;Web&#39;)</code> 时并没有「Web」，这时从第四个字符开始已经变成了「 前端」。</p>
+
+<p>因此我们需要转换 B 的操作来适应新的字符串，比如调成如下操作：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">delete(&#39;Web&#39;),
+insert(&#39;FE&#39;),
+retain(3)
+</code></pre></div>
+<p>这个转换算法就是 OT 的核心，实际上 OT 指的是一类技术，而不是具体的算法，这个思路就是首先将编辑转成操作(Operational)，如果多人操作同时进行，需要对这些操作进行转换(Transformation)，这就是为什么叫 Operational Transformation，而具体应该拆分成哪些操作以及转换算法都是可以自定义的，因此 OT 可以灵活地支持各种协同编辑应用，比如非文本类的编辑。</p>
+
+<p>回到之前 Myer 算法导致丢字符的那个例子，我们看看 OT 是否能解决，这里我使用了一个开源库 <a href="https://github.com/marcelklehr/changesets">changesets</a>，以下是基于它实现合并的例子：</p>
+<div class="highlight"><pre><code class="javascript language-javascript" data-lang="javascript"><span class="kd">var</span> <span class="nx">Changeset</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;changesets&#39;</span><span class="p">).</span><span class="nx">Changeset</span><span class="p">;</span>
+
+<span class="kd">var</span> <span class="nx">text</span> <span class="o">=</span> <span class="s2">&quot;百度 Web&quot;</span>
+  <span class="p">,</span> <span class="nx">textA</span> <span class="o">=</span> <span class="s2">&quot;Web 前端&quot;</span>
+  <span class="p">,</span> <span class="nx">textB</span> <span class="o">=</span> <span class="s2">&quot;百度 FE&quot;</span><span class="p">;</span>
+
+<span class="kd">var</span> <span class="nx">csA</span> <span class="o">=</span> <span class="nx">Changeset</span><span class="p">.</span><span class="nx">fromDiff</span><span class="p">(</span><span class="nx">text</span><span class="p">,</span> <span class="nx">textA</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">csB</span> <span class="o">=</span> <span class="nx">Changeset</span><span class="p">.</span><span class="nx">fromDiff</span><span class="p">(</span><span class="nx">text</span><span class="p">,</span> <span class="nx">textB</span><span class="p">);</span>
+
+<span class="kd">var</span> <span class="nx">csB_new</span> <span class="o">=</span> <span class="nx">csB</span><span class="p">.</span><span class="nx">transformAgainst</span><span class="p">(</span><span class="nx">csA</span><span class="p">);</span> <span class="c1">//这里这就是操作转换</span>
+
+<span class="kd">var</span> <span class="nx">textA_new</span> <span class="o">=</span> <span class="nx">csA</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+<span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">csB_new</span><span class="p">.</span><span class="nx">apply</span><span class="p">(</span><span class="nx">textA_new</span><span class="p">));</span> <span class="c1">//结果是「 前端FE」</span>
+</code></pre></div>
+<p>结果并不正确，正确的应该是「FE 前端」，查看一下 <code>csB_new</code> 的内容，发现它实际上是转换成了如下操作：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">delete(3),   //注意 changesets 在这里的参数不是字符串而是数字，它会直接删掉 3 个字符，不够内容是什么
+retain(3),
+insert(&#39;FE&#39;)
+</code></pre></div>
+<p>需要注意这并不是 OT 技术本身的问题，而是 changesets 所实现的转换算法问题，虽然不够完美，但和之前的 Myer 算法相比，至少没丢字符，后来我又做了几个测试，发现 OT 技术的准确率比 Myer 高，因此它是最适合用于协同编辑的技术。</p>
+
+<h3>分布式 Operational Transformation</h3>
+
+<p>如果看完上面的文章你觉得实现实时协同编辑似乎不难，那你就错了，因为我们之前都没有考虑分布式的问题，OT 技术在学术界都研究 20 多年了，至今也没人总结出一个最好的方法，前 Google Wave 工程师在 <a href="http://sharejs.org/">ShareJS</a> 首页上这样写道：</p>
+
+<blockquote>
+<p>Unfortunately, implementing OT sucks. There&#39;s a million algorithms with different tradeoffs, mostly trapped in academic papers. The algorithms are really hard and time consuming to implement correctly.
+I am an ex Google Wave engineer. Wave took 2 years to write and if we rewrote it today, it would take almost as long to write a second time.</p>
+</blockquote>
+
+<p>所以其实要做好是很难的，这里面最麻烦的就是分布式导致的问题，接下来将介绍 3 个我能想到的问题及解决方法。</p>
+
+<p><strong>1. 顺序问题</strong></p>
+
+<p>首先第一个问题是顺序问题，因为 OT 等算法都是依赖顺序的，不同顺序会导致结果不同，我们通过下面这张图来说明：</p>
+
+<p><img src="/img/realtime-collaboration/order-problem.png" alt="order-problem"></p>
+
+<p>假设 <code>Client A</code> 在做两次修改时发了两个异步请求，可能因为网络延迟导致第二个请求反而先到了，导致最终服务器版本和 <code>Client A</code> 所看到的不一致，同样在服务器发往其它客户端的请求时也会出现乱序的问题，如图中 <code>Client B</code> 也有问题。</p>
+
+<p>这个问题的解决方法很简单，我们可以在客户端和服务器端都加上队列来保证请求顺序，等前一个请求结束后再发下一个请求。</p>
+
+<p><strong>2. 存储的原子操作</strong></p>
+
+<p>如果有多台服务器，或者有多个线程/进程在同时处理请求时就会遇到覆盖问题，因为读写数据库并不是原子操作，比如下面的例子：</p>
+
+<p><img src="/img/realtime-collaboration/data-atomic.png" alt="data-atomic"></p>
+
+<p><code>Web Server A</code> 和 <code>Web Server B</code> 同时访问数据库，结果导致 <code>Web Server A</code> 的修改被覆盖了。</p>
+
+<p>好在这种问题还算比较常见，解决办法可以有 3 种：</p>
+
+<ul>
+<li>保证操作只在一个线程中执行，比如某个文档的更新只在某个固定的机器，使用 Node 这样的单线程模型提供服务，这样就不可能并行修改了</li>
+<li>如果数据库支持事务(transaction)，可以通过事务来解决</li>
+<li>如果数据库不支持事务，就只能用分布式锁了，如 ZooKeeper</li>
+</ul>
+
+<p>从实现角度来看，第一和第二种方法都比较简单，而第三种方法会带来很多问题，比如可能导致文档被锁死，假如上锁后由于种种原因没有执行解锁操作，这个文档就会永远被锁住，所以还得加上超时限制等策略。</p>
+
+<p>然而在解决了原子操作后，我们将发现一个新的问题，那就是版本管理问题。</p>
+
+<p><strong>3. 版本管理问题</strong></p>
+
+<p>在前面的例子中，两段新文本的修改都是基于同一个旧版本的，如果旧版本不一样，就有可能出错，具体可以通过下面这张图来解释：</p>
+
+<p><img src="/img/realtime-collaboration/version-problem.png" alt="version-problem"></p>
+
+<p>在这个例子中，Web Server A 接收到操作命令是将「a」文本改成「aa」，Web Server B 接收到操作命令是将「a」文本改成「ab」，这里我们加上了锁机制来避免同时读写数据，Web Server A 首先得到了锁，然后修改并更新数据，而 Web Server B 需要先等待数据解锁，等 Web Server B 拿到数据后它已经从「a」变成了「aa」，如果还按照 <code>retain(1), insert(&#39;b&#39;)</code> 进行修改，数据将变成「ab」，而不是正确的「aab」，引起这个问题的原因就是旧版本不一致，Web Server B 需要根据 Web Server A 的操作进行操作转换，变成 <code>retain(2), insert(&#39;b&#39;)</code>，然后才能对数据进行修改。</p>
+
+<p>因此想要解决这个问题，就必须引入版本，每次修改后都需要存储下新版本，有了版本我们就能使用 diff 功能来计算不同版本的差异，得到其它人修改的内容，然后通过 OT 合并算法合并两个操作，如下所示：</p>
+
+<p><img src="/img/realtime-collaboration/version-solution.png" alt="version-problem"></p>
+
+<p>在 <code>Web Server A</code> 操作前数据版本是 <code>v=1</code>，操作后变成了 <code>v=2</code>，等到 <code>Web Server B</code> 处理的时候，它通过版本比较发现不一致，所以就首先通过编辑距离算法算出 <code>Web Server A</code> 所做的操作，然后用这个操作来对自己的操作进行转换，得到正确的新操作，从而避免了覆盖问题。</p>
+
+<p>如果保存所有版本会导致数据量大大增加，所以还需要再优化，比如每个服务器保存一个数据副本，但这里就不再展开了，可以看要支持分布式 还是挺麻烦的，不过目前出现了一些前后端整合的方案，如 <a href="http://sharejs.org/">ShareJS</a> 和 <a href="https://github.com/opencoweb/coweb">OpenCoweb Framework</a>，可以参考。</p>
+
+<p>另外之前提到的 Myer&#39;s diff 算法也有分布式解决方案，具体细节可以参考<a href="https://neil.fraser.name/writing/sync/">这篇文档</a>。</p>
+
+<h2>初步结论</h2>
+
+<ul>
+<li>如果你只是一个内部小项目，实时性要求不高，但对准确性要求比较高
+
+<ul>
+<li>推荐用 merge 或 diff3 工具，出现同一行冲突时由用户来解决，这样能避免自动合并有可能出错的问题</li>
+</ul></li>
+<li>如果想具备一定的实时性，流量不大，不想实现太复杂，且对少量的冲突可以忍受
+
+<ul>
+<li>推荐用 Myer&#39;s diff，后端只开一个 Node 进程</li>
+</ul></li>
+<li>如果想具备实时性，且有多台后端服务同时处理
+
+<ul>
+<li>可以用 Operational Transformation 或 Myer&#39;s diff，但需要注意分布式带来的问题</li>
+</ul></li>
+<li>如果需要很精细的控制，如支持富文本编辑等非单纯文本格式
+
+<ul>
+<li>只能使用 Operational Transformation，但要自己实现操作合并算法，比如 XML 可以参考<a href="http://www.codecommit.com/blog/java/understanding-and-applying-operational-transformation">这篇文章</a></li>
+</ul></li>
+</ul>
+
+<h2>后续</h2>
+
+<p>除了文本合并，真正要做在线编辑还有很多细节处理，感兴趣的同学可以继续研究：</p>
+
+<ul>
+<li>支持选区，看到其他人选择的文本段，当然，这也有合并问题</li>
+<li>指针要更随文本变化移动到正确的位置</li>
+<li>支持 undo</li>
+</ul>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+                作者：<a href="http://wuduoyi.com/" target="_blank">nwind (http://wuduoyi.com/)</a> - 求内幕、求八卦、求甚解 <br/>
+                <a href="http://wuduoyi.com/" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#nwind">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="实时协同编辑的实现"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/04/realtime-collaboration";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+

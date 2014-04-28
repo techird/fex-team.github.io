@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="从 trim 原型函数看 JS 正则表达式的性能_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="从 trim 原型函数看 JS 正则表达式的性能,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>从 trim 原型函数看 JS 正则表达式的性能 FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+        
+            
+        
+            
+                <img src="/img/avatar/rank.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">从 trim 原型函数看 JS 正则表达式的性能</h1>
+            <div class="author">rank | 22 Mar 2014</div>
+        </div>
+
+        <div class="content">
+        <h2>问题</h2>
+
+<p>在 JS 里一般情况下用正则去除字符串头尾空格的 trim 函数的写法为：</p>
+
+<div class="highlight"><pre><code class="js">  <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+|[\s\t ]+$/g</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="nx">s</span> <span class="o">=</span> <span class="s1">&#39; this is a trim function test. &#39;</span><span class="p">;</span>
+  <span class="nx">alert</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">trim</span><span class="p">().</span><span class="nx">length</span><span class="p">);</span>
+</code></pre></div>
+
+<p>如果遇到大数据的变长字符串的话就会发现这个是很耗资源的。<br>
+执行效率非但不高，且有效率无法忍受，看下面的例子：</p>
+
+<div class="highlight"><pre><code class="html"> <span class="cp">&lt;!Doctype html&gt;</span>
+<span class="nt">&lt;html&gt;</span>
+ <span class="nt">&lt;head&gt;</span>
+ <span class="nt">&lt;meta</span> <span class="na">http-equiv=</span><span class="s">&quot;Content-Type&quot;</span> <span class="na">content=</span><span class="s">&quot;text/html; charset=utf-8&quot;</span><span class="nt">&gt;</span>
+ <span class="nt">&lt;title&gt;</span>rank&#39;s html<span class="nt">&lt;/title&gt;</span>
+ <span class="nt">&lt;meta</span> <span class="na">http-equiv=</span><span class="s">&quot;pragma&quot;</span> <span class="na">content=</span><span class="s">&quot;no-cache&quot;</span><span class="nt">&gt;</span> 
+ <span class="nt">&lt;/head&gt;</span>
+  <span class="nt">&lt;body&gt;</span>
+  <span class="nt">&lt;textarea&gt;</span>请在这里写足够多的空格或者 tab 字符。<span class="nt">&lt;/textarea&gt;</span>
+  <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span><span class="c1">//&lt;![CDATA[</span>
+  <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+|[\s\t ]+$/g</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementsByTagName</span><span class="p">(</span><span class="s1">&#39;textarea&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">value</span>
+  <span class="kd">var</span> <span class="nx">d</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">();</span>
+  <span class="nx">s</span><span class="p">.</span><span class="nx">trim</span><span class="p">();</span>
+  <span class="nx">alert</span><span class="p">(</span><span class="k">new</span> <span class="nb">Date</span><span class="p">()</span><span class="o">-</span><span class="nx">d</span><span class="p">);</span>
+<span class="err">//]]&gt;</span><span class="nt">&lt;/script&gt;</span>
+  <span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</code></pre></div>
+
+<h2>DFA 与 NFA</h2>
+
+<p>在解释这个原因的时候想起以前看到 《Master regular expression》 里面有提到过：</p>
+
+<blockquote>
+<p>NFA 和 DFA 引擎是有区别的。</p>
+
+<p>DFA 与 NFA 机制上的不同带来 5 个影响：</p>
+
+<ol>
+<li>DFA 对于文本串里的每一个字符只需扫描一次，比较快，但特性较少；
+
+<ul>
+<li>NFA 要翻来覆去吃字符、吐字符，速度慢，但是特性丰富，所以反而应用广泛。</li>
+<li>当今主要的正则表达式引擎，如 Perl、Ruby、Python 的 re 模块、Java 和 .NET 的 regex 库，都是 NFA 的。</li>
+</ul></li>
+<li>只有 NFA 才支持 lazy 和 backreference（后向引用）等特性；</li>
+<li>NFA 急于邀功请赏，所以最左子正则式优先匹配成功，因此偶尔会错过最佳匹配结果；
+
+<ul>
+<li>DFA 则是“最长的左子正则式优先匹配成功”。</li>
+</ul></li>
+<li>NFA 缺省采用 greedy 量词(就是对于/.*/、/\w+/这样的“重复 n ”次的模式，以贪婪方式进行，尽可能匹配更多字符，直到不得以罢手为止)，NFA 会优先匹配量词。</li>
+<li>NFA 可能会陷入递归调用的陷阱而表现得性能极差。</li>
+</ol>
+</blockquote>
+
+<p>从上面的结论容易看出，JS 是 NFA 引擎。</p>
+
+<h2>NFA backtracking（回朔）</h2>
+
+<blockquote>
+<p>当 NFA 发现自己吃多了，一个一个往回吐，边吐边找匹配，这个过程叫做 backtracking。</p>
+</blockquote>
+
+<p>由于存在这个过程，在 NFA 匹配过程中，特别是在编写不合理的正则式匹配过程中，文本被反复扫描，效率损失是不小的。<br>
+明白这个道理，对于写出高效的正则表达式很有帮助。</p>
+
+<h2>分析</h2>
+
+<p>经过测试，有几个方法是可以化解 JS NFA 引擎的回朔次数：</p>
+
+<ul>
+<li>去掉限定的量词，即改成</li>
+</ul>
+
+<div class="highlight"><pre><code class="js">    <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+|[\s\t ]$/g</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+     <span class="p">}</span>
+    
+</code></pre></div>
+
+<ul>
+<li>去掉字符串尾匹配。</li>
+</ul>
+
+<div class="highlight"><pre><code class="js"> <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+/g</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+ <span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>加入多行匹配。</li>
+</ul>
+
+<div class="highlight"><pre><code class="js"><span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+|[\s\t ]+$/mg</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+ <span class="p">}</span>
+</code></pre></div>
+
+<p>从以上 3 种改法结合 NFA 资料，我们可以大概的知道 trim 性能出现问题的原因：</p>
+
+<ul>
+<li>「量词限定」将优先匹配。</li>
+<li>「量词限定」在结尾可能会使 JS 的正则引擎不停的回朔，出现递归的一个陷阱，这个递归的深度太深。<br>
+如果字符串更大一点应该会出现栈溢出了。</li>
+<li>多行匹配性能消耗不大，即化简递归深度。</li>
+</ul>
+
+<h2>改良 trim 函数</h2>
+
+<p>首先，确定匹配字符串的开始部分正则表达式是没有任何效率问题的。<br>
+而在匹配结束的部分会出现性能问题，那则可以用迭代查找空字符串改善 trim 性能问题。</p>
+
+<div class="highlight"><pre><code class="js">  <span class="nb">String</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">trim</span> <span class="o">=</span> <span class="kd">function</span> <span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\s\t ]+/g</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">);</span>
+    <span class="err">从</span> <span class="nx">s</span> <span class="err">后端开始查找，并回循环到最后一个非空字符串，代码略。</span>
+  <span class="p">}</span>
+</code></pre></div>
+
+<p>-- EOF --</p>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+        
+            
+        
+            
+                作者：<a href="http://rank.im/" target="_blank">rank (http://rank.im/)</a> - Border is just for crossing <br/>
+                <a href="http://rank.im/" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#rank">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="从 trim 原型函数看 JS 正则表达式的性能"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/03/trim-to-regexp-performance";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+

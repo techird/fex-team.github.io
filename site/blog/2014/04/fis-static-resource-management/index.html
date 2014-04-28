@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="如何高效地管理网站静态资源_FEX_做最专业的前端_百度前端研发部_百度前端团队Blog" />
+    <meta name="keywords" content="如何高效地管理网站静态资源,百度前端团队,FEX,百度FEX,百度前端,fex,百度前端研发,fis,前端模块化,前端工程,富应用开发,html5上传,前端数据监控,性能优化,web performance,编辑器,ueditor" />
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="http://fex.baidu.com/feed.xml">
+    <title>如何高效地管理网站静态资源 FEX 做最专业的前端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="bUyKbVcNh2" />
+    <link rel="stylesheet" href="/public/css/normalize.css">
+    <link rel="stylesheet" href="/public/css/base.css">
+    <link rel="stylesheet" href="/public/css/fextm.css">
+</head>
+<body>
+<!--[if lt IE 8]>
+<p class="browsehappy">您使用的浏览器版本<strong>过老</strong>，请<a href="http://browsehappy.com/">使用最新的浏览器</a>来提升浏览体验。</p>
+<![endif]-->
+<div class="page-header">
+    <a href="/"><div class="logo"></div></a>
+    <ul class="page-nav page-navi-articles">
+        <li><a href="/">首页</a></li>
+        <li><a href="/articles/">技术</a></li>
+        <li><a href="/code.html">开源</a></li>
+        <!-- <li><a href="/team.html">团队</a></li> -->
+        <li><a href="/we-need-you/" target="_blank">我们需要你</a></li>
+        <li><a href="https://github.com/fex-team/" target="_blank">Github</a></li>
+    </ul>
+    <a class="rss" target="_blank" href="http://fex.baidu.com/feed.xml"></a>
+</div>
+
+
+
+
+<link rel="stylesheet" href="/public/css/synatx.css">
+
+<div class="container">
+    <article>
+        <div class="article-info">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                <img src="/img/avatar/walter.png" onerror="/img/avatar/fex.png" />
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            <h1 class="title">如何高效地管理网站静态资源</h1>
+            <div class="author">walter | 11 Apr 2014</div>
+        </div>
+
+        <div class="content">
+        <h2>背景</h2>
+
+<p>随着互联网开发和迭代速度越来越快，网站也变得越来越庞大，存在大量静态资源，我们原有管理静态资源的方式变得越来越不适用，就如同封面图一样，静态资源之间的关系错综复杂，给工程师带来了很多麻烦：</p>
+
+<ul>
+<li>人工管理依赖的噩梦，工程师需要频繁管理和维护每个页面需要的 JS &amp; CSS 文件，包括静态资源之间的依赖关系以及加载顺序等。</li>
+<li>性能优化成本高且不可持续性，为了提高网站性能，工程师总是在忙于优化页面静态资源的加载，包括动态加载静态资源、按需加载静态资源和修改静态资源合并策略等，但是过了一段时间性能又降下来了，又需要周而复始的重复。</li>
+<li>静态资源差异化的挑战，PC和无线的适配，不同的网络和终端需要适配相应的静态资源；当网站需要支持国际化的时候，需要对不同的国家进行差异化处理，返回不同的静态资源，这些需求对原有的静态资源管理方式提出巨大挑战。</li>
+<li>缺少快速迭代和试验新功能的有效支持，从开发到上线流程繁琐，导致项目迭代周期长</li>
+</ul>
+
+<p>每天工程师都会提交大量的 new feature/bug fixes，每次项目发布和迭代都面临着以上的问题，是否可以有一套系统帮助我们管理/调度静态资源来减少人工管理静态资源成本和风险，来达到更快、更可靠、低成本的自动化项目交付。在实际项目开发中，我们进行了大量探索和试验，实现了一套 “静态资源管理系统”，对静态资源进行全流程的管理和调度：</p>
+
+<ul>
+<li>帮助工程师管理静态资源间的依赖以及资源的加载</li>
+<li>管理静态资源版本更新与缓存，自动处理CDN</li>
+<li>自动生成最优的静态资源合并策略，实现网站自适应优化</li>
+<li>实现静态资源的分级发布，快速迭代，轻松回滚</li>
+<li>根据国际化和终端的差异，送达不同的资源给不同的用户</li>
+</ul>
+
+<p>下面本文将会介绍我们是如何通过静态资源系统来高效管理静态资源的。</p>
+
+<h2>架构</h2>
+
+<p><img src="/img/fis-static-resource-management/arc.png" alt="arc"></p>
+
+<p>静态资源管理系统主要包含Compile、Sourcemap、Backend-Framework、Frontend-Loader几个核心模块：</p>
+
+<ul>
+<li>Compile，对静态资源进行编译处理，包括对静态资源进行预处理，url 处理(添加md5戳、添加CDN前缀)，优化(压缩、合并)，生成 Sourcemap 等</li>
+<li>Sourcemap，在 compile 阶段系统会扫描静态资源，建立一张静态资源关系表，记录每个静态资源的部署路径以及依赖关系等信息</li>
+<li>Backend-Framework，后端运行时根据组件使用情况来调度静态资源，为前端返回页面渲染需要的资源。</li>
+<li>Frontend-Loader，前端运行时根据用户的交互行为动态请求静态资源。</li>
+</ul>
+
+<p>静态资源管理系统通过自动化工具对静态资源进行预处理并产出 Sourcemap，SourceMap 中记录着静态资源的调度信息，这样框架在运行时会根据 SourceMap 中提供的调度信息自动为用户进行静态资源调度，不仅可以做到送达不同资源给不同用户，还可以自适应优化静态资源合并和加载。</p>
+
+<h2>自动管理静态资源依赖</h2>
+
+<p>静态资源管理系统为工程师提供了声明依赖关系的语法和规则，在 compile 阶段系统会扫描静态资源，建立一张静态资源关系表，记录每个静态资源的部署路径以及依赖关系等信息。</p>
+
+<h3>在html中声明依赖</h3>
+
+<p>在项目的 index.html 里使用注释声明依赖关系：</p>
+<div class="highlight"><pre><code class="html language-html" data-lang="html"><span class="c">&lt;!--</span>
+<span class="c">    @require demo.js</span>
+<span class="c">    @require &quot;demo.css&quot;</span>
+<span class="c">--&gt;</span>
+</code></pre></div>
+<p>在 SourceMap 中则可看到：</p>
+<div class="highlight"><pre><code class="json language-json" data-lang="json"><span class="p">{</span>
+    <span class="nt">&quot;res&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;demo.css&quot;</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;uri&quot;</span> <span class="p">:</span> <span class="s2">&quot;/static/css/demo_7defa41.css&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span> <span class="p">:</span> <span class="s2">&quot;css&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;demo.js&quot;</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;uri&quot;</span> <span class="p">:</span> <span class="s2">&quot;/static/js/demo_33c5143.js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span> <span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;deps&quot;</span> <span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;demo.css&quot;</span> <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;index.html&quot;</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;uri&quot;</span> <span class="p">:</span> <span class="s2">&quot;/index.html&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span> <span class="p">:</span> <span class="s2">&quot;html&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;deps&quot;</span> <span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;demo.js&quot;</span><span class="p">,</span> <span class="s2">&quot;demo.css&quot;</span> <span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;pkg&quot;</span> <span class="p">:</span> <span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3>在js中声明依赖</h3>
+
+<p>支持识别 js 文件中的 require 函数，或者 注释中的 @require 字段 标记的依赖关系，这些分析处理对 html 的 script 标签内容 同样有效。</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="c1">//demo.js</span>
+<span class="cm">/**</span>
+<span class="cm"> * @require demo.css</span>
+<span class="cm"> * @require list.js</span>
+<span class="cm"> */</span>
+<span class="kd">var</span> <span class="nx">$</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;jquery&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>在SourceMap中则可看到：</p>
+<div class="highlight"><pre><code class="json language-json" data-lang="json"><span class="p">{</span>
+    <span class="nt">&quot;res&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="err">...</span>
+        <span class="nt">&quot;demo.js&quot;</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;uri&quot;</span> <span class="p">:</span> <span class="s2">&quot;/static/js/demo_33c5143.js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span> <span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;deps&quot;</span> <span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;demo.css&quot;</span><span class="p">,</span> <span class="s2">&quot;list.js&quot;</span><span class="p">,</span> <span class="s2">&quot;jquery&quot;</span> <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="err">...</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;pkg&quot;</span> <span class="p">:</span> <span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3>在css中声明依赖</h3>
+
+<p>支持识别 css 文件 注释中的 @require 字段 标记的依赖关系，这些分析处理对 html 的 style 标签内容 同样有效。</p>
+<div class="highlight"><pre><code class="js language-js" data-lang="js"><span class="c1">//demo.js</span>
+<span class="cm">/**</span>
+<span class="cm"> * @require demo.css</span>
+<span class="cm"> * @require list.js</span>
+<span class="cm"> */</span>
+<span class="kd">var</span> <span class="nx">$</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;jquery&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>在SourceMap中则可看到：</p>
+<div class="highlight"><pre><code class="json language-json" data-lang="json"><span class="p">{</span>
+    <span class="nt">&quot;res&quot;</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="err">...</span>
+        <span class="nt">&quot;demo.js&quot;</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;uri&quot;</span> <span class="p">:</span> <span class="s2">&quot;/static/js/demo_33c5143.js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span> <span class="p">:</span> <span class="s2">&quot;js&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;deps&quot;</span> <span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;demo.css&quot;</span><span class="p">,</span> <span class="s2">&quot;list.js&quot;</span><span class="p">,</span> <span class="s2">&quot;jquery&quot;</span> <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="err">...</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;pkg&quot;</span> <span class="p">:</span> <span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2>按需加载静态资源</h2>
+
+<p>在静态资源管理系统接管了项目中的静态资源后，可以知道静态资源的运行情况以及依赖关系，然后可以做到自动为页面按需加载静态资源，下面通过一个例子来详细讲解：</p>
+
+<p>sidebar.tpl 中的内容如下，</p>
+<div class="highlight"><pre><code class="html language-html" data-lang="html"><span class="c">&lt;!--</span>
+<span class="c">    @require &quot;common:ui/dialog/dialog.css&quot;</span>
+<span class="c">--&gt;</span>
+
+<span class="nt">&lt;a</span> <span class="na">id=</span><span class="s">&quot;btn-navbar&quot;</span> <span class="na">class=</span><span class="s">&quot;btn-navbar&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+<span class="nt">&lt;/a&gt;</span>
+
+{script}
+    var sidebar = require(&quot;common:ui/dialog/dialog.js&quot;);
+    sidebar.run();
+{/script}
+
+{script}
+    $(&#39;a.btn-navbar&#39;).click(function() {
+        require.async(&#39;common:ui/dialog/dialog.async.js&#39;, function( dialog ) {
+            dialog.run();
+        });
+    });
+{/script}
+</code></pre></div>
+<p>对项目编译后，自动化工具会分析依赖关系，并生成 sourcemap，如下</p>
+<div class="highlight"><pre><code class="json language-json" data-lang="json"><span class="s2">&quot;common:widget/sidebar/sidebar.tpl&quot;</span><span class="err">:</span> <span class="p">{</span>
+    <span class="nt">&quot;uri&quot;</span><span class="p">:</span> <span class="s2">&quot;common/widget/sidebsr/sidebar.tpl&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tpl&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;extras&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;async&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="s2">&quot;common:ui/dialog/dialog.async.js&quot;</span>
+        <span class="p">]</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;deps&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;common:ui/dialog/dialog.js&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;common:ui/dialog/dialog.css&quot;</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>在 sidebar 模块被调用后，静态资源管理系统通过查询 sourcemap 可以得知，当前 sidebar 模块同步依赖 sidebar.js、sidebar.css，异步依赖 sdebar.async.js，在要输出的 html 前面，生成静态资源外链，我们得到最终的 html</p>
+<div class="highlight"><pre><code class="html language-html" data-lang="html"><span class="nt">&lt;link</span> <span class="na">rel=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">href=</span><span class="s">&quot;/static/ui/dialog/dialog_7defa41.css&quot;</span><span class="nt">&gt;</span>
+
+<span class="nt">&lt;a</span> <span class="na">id=</span><span class="s">&quot;btn-navbar&quot;</span> <span class="na">class=</span><span class="s">&quot;btn-navbar&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+    <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">&quot;icon-bar&quot;</span><span class="nt">&gt;&lt;/span&gt;</span>
+<span class="nt">&lt;/a&gt;</span>
+
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;/static/common/ui/dialog/dialog$12cd4.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+    <span class="nx">require</span><span class="p">.</span><span class="nx">resourceMap</span><span class="p">({</span>
+        <span class="s2">&quot;res&quot;</span><span class="o">:</span> <span class="p">{</span>
+            <span class="s2">&quot;common:ui/dialog/dialog.async.js&quot;</span><span class="o">:</span> <span class="p">{</span>
+                <span class="s2">&quot;url&quot;</span><span class="o">:</span> <span class="s2">&quot;/satic/common/ui/dialog/dialog.async_449e169.js&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">});</span>
+<span class="nt">&lt;/script&gt;</span>
+<span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
+    <span class="kd">var</span> <span class="nx">sidebar</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;common:ui/dialog/dialog.js&quot;</span><span class="p">);</span>
+    <span class="nx">sidebar</span><span class="p">.</span><span class="nx">run</span><span class="p">();</span>
+
+    <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;a.btn-navbar&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">require</span><span class="p">.</span><span class="nx">async</span><span class="p">(</span><span class="s1">&#39;common:ui/dialog/dialog.async.js&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span> <span class="nx">dialog</span> <span class="p">)</span> <span class="p">{</span>
+            <span class="nx">dialog</span><span class="p">.</span><span class="nx">run</span><span class="p">();</span>
+        <span class="p">});</span>
+    <span class="p">});</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre></div>
+<p>如上可见，后端模块化框架将同步模块的 script url 统一生成到页面底部，将 css url 统一生成在 head 中，对于异步模块(require.async)注册 resourceMap 代码，框架会通过 {script} 标签收集到页面所有 script，统一管理并按顺序输出 script 到相应位置。</p>
+
+<p>当我们想对模块进行打包，只需要使用一个 pack 配置项，对网站的静态资源进行打包，这样在 SourceMap 中，所有被打包的资源会有一个 pkg 属性指向该表中的资源，而这个资源，正是我们配置的打包策略。这样静态资源系统可以根据对应信息找到某个资源最终被合并后的 package 的 url，最后把这个 url 返回给页面。</p>
+
+<h2>自动合并静态资源</h2>
+
+<p>静态资源管理系统可以根据产品线上静态资源使用的数据，自动完成静态资源合并工作，对工程师完全透明，解决手工维护的未及时排除废弃资源、不可持续、成本大等问题。</p>
+
+<p><img src="/img/fis-static-resource-management/autopackage.png" alt="arc"></p>
+
+<p>详情请见 <a href="https://speakerdeck.com/baidufe/jing-tai-zi-yuan-zi-dong-he-bing-xi-tong">静态资源自动合并</a>;</p>
+
+<h2>静态资源版本更新与缓存</h2>
+
+<p>静态资源管理系统采用基于文件内容的 hash 值来控制静态资源的版本更新，如下所示：</p>
+<div class="highlight"><pre><code class="html language-html" data-lang="html"><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span> <span class="na">src=</span><span class="s">&quot;a_8244e91.js&quot;</span><span class="nt">&gt;&lt;/script&gt;</span>
+</code></pre></div>
+<p>其中”_82244e91 ”这串字符是根据 a.js 的文件内容进行 hash 运算得到的，只有文件内容发生变化了才会有更改。这样做的好处有：</p>
+
+<ul>
+<li>线上的 a.js 不是同名文件覆盖，而是文件名 +hash 的冗余，所以可以先上线静态资源，再上线 html 页面，不存在间隙问题；</li>
+<li>遇到问题回滚版本的时候，无需回滚 a.js，只须回滚页面即可；</li>
+<li>由于静态资源版本号是文件内容的 hash，因此所有静态资源可以开启永久强缓存，只有更新了内容的文件才会缓存失效，缓存利用率大增；</li>
+<li>修改静态资源后会在线上产生新的文件，一个文件对应一个版本，因此不会受到构造 CDN 缓存形式的攻击</li>
+</ul>
+
+<p>静态资源管理系统会在 compile 阶段识别文件中的定位标记(url)，计算对应文件的 hash，并自动替换为 &#39;文件名 + hash&#39;，无需工程师手动修改。</p>
+
+<h2>静态资源分级控制</h2>
+
+<p>静态资源管理系统可以对静态资源做进一步控制(Controlling Access to Features)以达到分级发布的效果，主要包括以下两块核心功能,</p>
+
+<ul>
+<li>feature flags, 用来控制 feature 对应的静态资源是否加载</li>
+<li>feature flippers, 可以灵活控制 feature，不仅仅是 on 或 off, 可以做到类似&#39;3%用户可以访问此功能&#39;、&#39;对内部所有员工开放&#39; 类似的效果</li>
+</ul>
+
+<p>通过以上的控制我们可以轻松做到发布一个新功能，让这个功能只对部分用户可访问，当功能完善后对所有用户开放，如果功能出现问题直接一键回滚即可。</p>
+
+<p>在项目中的类似代码如下：</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">{if $config.some eq &#39;Fred&#39;}
+    do something new and amazing here.
+{elseif $config.some eq &#39;Wilma&#39;}
+    do the current boring stuff.
+{else}
+    whatever you are.
+</code></pre></div>
+<p>静态资源管理系统会根据配置在运行时对 $config.some 进行干预.实现对静态资源的访问权控制，通过运行时的配置(feature flag)来控制静态资源，还可以支持“主干开发”的方式，来达到更快的迭代速度。</p>
+
+<p>我们还可以实现国际化的需求，原理同分级发布，在运行时的做一些更细致的差异化处理</p>
+<div class="highlight"><pre><code class="text language-text" data-lang="text">{if $lang == &#39;zh-CN&#39;}
+    zh-CN
+{/if}
+</code></pre></div>
+<h2>总结</h2>
+
+<p>静态资源管理系统的核心是对静态资源进行调度，可以很灵活的适应各种性能优化和差异化处理的场景，来达到更快、更可靠、低成本的自动化项目交付。但是同时这个系统十分复杂，承载着各种职责，这个系统本身会成为整个网站的关键节点和瓶颈。</p>
+
+        </div>
+
+        <div class="author">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                作者：<a href="http://weibo.com/u/1916384703" target="_blank">walter (http://weibo.com/u/1916384703)</a> - F.I.S <br/>
+                <a href="http://weibo.com/u/1916384703" target="_blank"></a> <br/>
+                <!-- <a href="/posts/#walter">查看他|她写的全部文章</a>  |   -->
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+        </div>
+
+        <!-- Duoshuo Comment BEGIN -->
+<a name="comments"> </a>
+<div id="comment">
+    <div class="ds-thread" data-title="如何高效地管理网站静态资源"></div>
+    <script type="text/javascript">
+    var duoshuoQuery = {short_name:"fex"};
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = 'http://static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0] 
+        || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+    </script>
+</div>
+<!-- Duoshuo Comment END -->
+
+    </article>
+
+    <div class="page-sidebar">
+    <!-- <div>
+        <img src="/public/images/formula.png" />
+    </div> -->
+
+    <ul class="github-projects">
+        
+            <li><a href="https://github.com/fex-team/fis-plus" target="_blank">FIS - 前端集成解决方案</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityformula" target="_blank">KityFormula - 公式展现和编辑</a></li>
+        
+            <li><a href="https://github.com/fex-team/kityminder" target="_blank">KityMinder - 思维导图编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/ufinder" target="_blank">UFinder - 文件管理工具</a></li>
+        
+            <li><a href="https://github.com/fex-team/ueditor" target="_blank">UEditor - 富文本编辑器</a></li>
+        
+            <li><a href="https://github.com/fex-team/webuploader" target="_blank">WebUploader - 文件上传组件</a></li>
+        
+    </ul>
+
+    <div style="text-align:center;margin:30px 0;"><img src="/public/images/erwei.png" /></div>
+
+    <div class="last-comments">
+        <!-- 多说最新评论 start -->
+        <div class="ds-recent-comments" data-num-items="10" data-show-avatars="1" data-show-time="1" data-show-title="1" data-show-admin="1" data-excerpt-length="70"></div>
+        <!-- 多说最新评论 end -->
+        <!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+        <script type="text/javascript">
+        var duoshuoQuery = {short_name:"fex"};
+            (function() {
+                var ds = document.createElement('script');
+                ds.type = 'text/javascript';ds.async = true;
+                ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+                ds.charset = 'UTF-8';
+                (document.getElementsByTagName('head')[0] 
+                 || document.getElementsByTagName('body')[0]).appendChild(ds);
+            })();
+        </script>
+        <!-- 多说公共JS代码 end -->
+    </div>
+</div>
+
+
+</div>
+
+
+<div class="page-footer">
+    <div class="foot-inner">
+    <dl>
+        <dt>友情链接</dt>
+        <dd>
+            <ul>
+                <li><a href="http://ued.taobao.org/blog/" target="_blank">淘宝 UED</a></li>
+                <li><a href="http://www.75team.com/" target="_blank">奇舞团</a></li>
+                <li><a href="http://www.w3ctech.com" target="_blank">w3ctech</a></li>
+                <li><a href="http://www.alloyteam.com/" target="_blank">腾讯 AlloyTeam</a></li>
+                <li><a href="http://isux.tencent.com/" target="_blank">腾讯 ISUX</a></li>
+                <li><a href="http://ued.ctrip.com/blog/?cat=11" target="_blank">携程 UED</a></li>
+                <li><a href="http://mux.baidu.com/" target="_blank">百度 MUX</a></li>
+                <li><a href="http://www.blueidea.com" target="_blank">蓝色理想</a></li>
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>我们的项目</dt>
+        <dd>
+            <ul>
+                
+                    <li><a href="http://github.com/fex-team/fis-plus/" target="_blank">FIS</a></li>
+                
+                    <li><a href="http://github.com/fex-team/kityformula/" target="_blank">KityFormula</a></li>
+                
+                    <li><a href="http://naotu.baidu.com/" target="_blank">KityMinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ufinder/" target="_blank">UFinder</a></li>
+                
+                    <li><a href="http://github.com/fex-team/ueditor/" target="_blank">UEditor</a></li>
+                
+                    <li><a href="http://fex.baidu.com/webuploader" target="_blank">WebUploader</a></li>
+                
+            <ul>
+        </dd>
+    </dl>
+
+    <dl>
+        <dt>加入我们</dt>
+        <dd>
+            <p>FEX 是百度「Web 前端研发部」的内部名称，其中 FE 是 Front End 的缩写，X 代表我们不仅关注前端技术，还更重视全端及全栈的能力。</p>
+
+            <p>如果你对这个团队感兴趣，可以<a href="/we-need-you/">【更多了解一下】</a>。</p>
+        </dd>
+    </dl>
+    </div>
+</div>
+
+
+
+<script>
+    var page = "/blog/2014/04/fis-static-resource-management";
+</script>
+<script type="text/javascript" src="/public/js/fex.alog.monk.js?t=201404171736"></script>
+
+
+<script type="text/javascript">
+    //设置站外链接新页面打开
+    var a_list= document.getElementsByTagName("a"); 
+    for(var i=0;i<a_list.length;i++){  
+        var href = a_list[i].href;
+        if( href && String(href).indexOf("fex.baidu.com") < 0 ){  
+            a_list[i].target = "_blank";
+        }  
+    } 
+</script>
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+    var domain = document.domain;
+    if(domain === "fex.baidu.com") {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?5cfaa6810a02b4f45dc2c55614d98f57";
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    }
+})();
+</script>
+</body>
+</html>
+
